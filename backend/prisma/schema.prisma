@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Plant {
+  id          String   @id @default(cuid())
+  name        String
+  scientificName String
+  slug        String   @unique
+  description String
+  imageUrl    String
+  difficulty  Difficulty
+  light       String
+  watering    String
+  temperature String
+  humidity    String
+  substrate   String
+  fertilizing String
+  pruning     String
+  environment String
+  tips        String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categories PlantCategory[]
+  problems   PlantProblem[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String
+  plants      PlantCategory[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Problem {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String
+  causes      String
+  recommendation String
+  plants      PlantProblem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PlantCategory {
+  plantId    String
+  categoryId String
+  plant      Plant    @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([plantId, categoryId])
+}
+
+model PlantProblem {
+  plantId   String
+  problemId String
+  plant     Plant   @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@id([plantId, problemId])
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}

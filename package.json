@@ -1,0 +1,27 @@
+{
+  "name": "florae",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Plataforma web de cuidados com plantas com React, Tailwind, Express, Prisma e PostgreSQL.",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace backend\" \"npm run dev --workspace frontend\"",
+    "build": "npm run build --workspace backend && npm run build --workspace frontend",
+    "lint": "npm run lint --workspace frontend",
+    "start": "npm run start --workspace backend",
+    "test": "npm run test --workspace backend",
+    "test:production": "npm run build && node scripts/verify-production.mjs",
+    "admin:setup": "npm run admin:setup --workspace backend",
+    "prisma:deploy": "npm run prisma:deploy --workspace backend",
+    "prisma:generate": "npm run prisma:generate --workspace backend",
+    "prisma:migrate": "npm run prisma:migrate --workspace backend",
+    "seed": "npm run seed --workspace backend"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "concurrently": "^9.1.2"
+  }
+}
