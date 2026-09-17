@@ -57,6 +57,16 @@ export function AdminPage() {
   const categories = categoriesState.data ?? [];
   const problems = problemsState.data ?? [];
 
+  function openCatalog(tab: "categories" | "problems") {
+    setActiveTab(tab);
+    setMessage("");
+    requestAnimationFrame(() => {
+      const target = document.getElementById(`tab-${tab}`);
+      target?.focus();
+      target?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }
+
   const title = editing ? `Editando ${editing.name}` : "Nova planta";
   const tipText = useMemo(() => form.tips.join("\n"), [form.tips]);
   const loadError = plantsState.error || categoriesState.error || problemsState.error;
@@ -315,11 +325,14 @@ export function AdminPage() {
             />
             <CheckList
               title="Categorias"
+              description="Grupos de plantas, como suculentas ou plantas de interior."
+              emptyMessage="Nenhuma categoria cadastrada."
+              onManage={() => openCatalog("categories")}
               items={categories}
               selected={form.categoryIds}
               onChange={(categoryIds) => setForm({ ...form, categoryIds })}
             />
-            <CheckList title="Problemas" items={problems} selected={form.problemIds} onChange={(problemIds) => setForm({ ...form, problemIds })} />
+            <CheckList title="Problemas" description="Condições que podem afetar a planta, como folhas amareladas ou cochonilhas." emptyMessage="Nenhum problema cadastrado." onManage={() => openCatalog("problems")} items={problems} selected={form.problemIds} onChange={(problemIds) => setForm({ ...form, problemIds })} />
             <Button type="submit" variant="dark">
               <Save className="h-4 w-4" />
               {saving ? "Salvando..." : "Salvar"}
@@ -336,7 +349,8 @@ export function AdminPage() {
 
       <div role="tabpanel" id="panel-categories" aria-labelledby="tab-categories" hidden={activeTab !== "categories"} tabIndex={0}>
         <div className="max-w-3xl">
-          <h2 className="mb-5 text-2xl font-semibold">Categorias</h2>
+          <h2 className="text-2xl font-semibold">Categorias</h2>
+          <p className="mb-5 mt-2 text-sm text-primary/70">Grupos de plantas com características em comum, como suculentas ou plantas de interior.</p>
           <form className="mb-5 grid gap-3" onSubmit={saveCategory}>
             <Input required placeholder="Nome da categoria" value={categoryForm.name} onChange={(event) => setCategoryForm({ ...categoryForm, name: event.target.value })} />
             <Input placeholder="Slug" value={categoryForm.slug} onChange={(event) => setCategoryForm({ ...categoryForm, slug: event.target.value })} />
@@ -378,7 +392,8 @@ export function AdminPage() {
 
       <div role="tabpanel" id="panel-problems" aria-labelledby="tab-problems" hidden={activeTab !== "problems"} tabIndex={0}>
         <div className="max-w-3xl">
-          <h2 className="mb-5 text-2xl font-semibold">Problemas comuns</h2>
+          <h2 className="text-2xl font-semibold">Problemas comuns</h2>
+          <p className="mb-5 mt-2 text-sm text-primary/70">Pragas, doenças e sintomas das plantas, com suas possíveis causas e recomendações de cuidado.</p>
           <form className="mb-5 grid gap-3" onSubmit={saveProblem}>
             <Input required placeholder="Nome do problema" value={problemForm.name} onChange={(event) => setProblemForm({ ...problemForm, name: event.target.value })} />
             <Input placeholder="Slug" value={problemForm.slug} onChange={(event) => setProblemForm({ ...problemForm, slug: event.target.value })} />
@@ -431,20 +446,27 @@ export function AdminPage() {
 
 function CheckList<T extends Category | Problem>({
   title,
+  description,
+  emptyMessage,
+  onManage,
   items,
   selected,
   onChange
 }: {
   title: string;
+  description: string;
+  emptyMessage: string;
+  onManage: () => void;
   items: T[];
   selected: string[];
   onChange: (ids: string[]) => void;
 }) {
   return (
-    <div className="rounded-md border border-border bg-white p-3">
-      <p className="mb-2 text-sm font-semibold">{title}</p>
+    <fieldset className="min-w-0 border-t border-border py-3">
+      <legend className="pr-2 text-sm font-semibold">{title}</legend>
+      <p className="mb-3 text-sm text-primary/70">{description}</p>
       <div className="grid gap-2">
-        {items.length === 0 && <p className="text-sm text-primary/60">Nenhuma opção cadastrada.</p>}
+        {items.length === 0 && <p className="text-sm text-primary/60">{emptyMessage}</p>}
         {items.map((item) => (
           <label key={item.id} className="flex items-center gap-2 text-sm">
             <input
@@ -458,6 +480,10 @@ function CheckList<T extends Category | Problem>({
           </label>
         ))}
       </div>
-    </div>
+      <Button type="button" variant="ghost" className="mt-2" onClick={onManage}>
+        <Plus className="h-4 w-4" />
+        {title === "Categorias" ? "Gerenciar categorias" : "Gerenciar problemas"}
+      </Button>
+    </fieldset>
   );
 }
