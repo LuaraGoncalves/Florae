@@ -47,13 +47,9 @@ export async function verifyGarden(page, base, password) {
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await page.getByPlaceholder("Nome popular", { exact: true }).fill("Nova planta");
-  for (const [button, tab] of [["Gerenciar categorias", "Categorias"], ["Gerenciar problemas", "Problemas"]]) {
-    await page.getByRole("button", { name: button, exact: true }).click();
-    assert.equal(await page.getByRole("tab", { name: tab, exact: true }).getAttribute("aria-selected"), "true");
-    assert.equal(await page.getByRole("tabpanel").count(), 1);
-    await page.getByRole("tab", { name: "Plantas", exact: true }).click();
-    assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).inputValue(), "Nova planta");
-  }
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  assert.equal(await page.locator("#plant-step-title").innerText(), "1. Identificação");
+  assert.equal(saved, undefined);
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     for (const name of ["Categorias", "Problemas", "Plantas"]) {
@@ -75,12 +71,31 @@ export async function verifyGarden(page, base, password) {
   await page.getByRole("tab", { name: "Categorias", exact: true }).press("Home");
   assert.equal(await page.getByRole("tab", { name: "Plantas", exact: true }).getAttribute("aria-selected"), "true");
   await page.getByPlaceholder("Nome científico", { exact: true }).fill("Species test");
-  for (const label of ["Descrição", "Iluminação", "Rega", "Temperatura", "Umidade", "Substrato", "Adubação", "Poda", "Ambiente"]) await page.locator("fieldset").getByPlaceholder(label, { exact: true }).fill("Conteudo de teste valido");
+  await page.getByLabel("Descrição", { exact: true }).fill("Conteudo de teste valido");
   const input = page.getByLabel("Selecionar foto", { exact: true });
   await input.setInputFiles({ name: "bad.txt", mimeType: "text/plain", buffer: Buffer.from("invalid") });
   await page.getByText("Selecione JPEG, PNG ou WebP de até 5 MB.").waitFor();
   const image = await sharp({ create: { width: 2, height: 2, channels: 3, background: "white" } }).png().toBuffer();
   await input.setInputFiles({ name: "test.png", mimeType: "image/png", buffer: image });
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByRole("button", { name: "Voltar", exact: true }).click();
+  assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).inputValue(), "Nova planta");
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  for (const labels of [["Iluminação", "Temperatura", "Umidade", "Ambiente"], ["Rega", "Substrato", "Adubação", "Poda"]]) {
+    for (const label of labels) await page.getByLabel(label, { exact: true }).fill("Conteudo de teste valido");
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      await page.screenshot({ path: `artifacts/step-${labels[0]}-${width}.png`, fullPage: true });
+    }
+    await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  }
+  for (const [button, tab] of [["Gerenciar categorias", "Categorias"], ["Gerenciar problemas", "Problemas"]]) {
+    await page.getByRole("button", { name: button, exact: true }).click();
+    assert.equal(await page.getByRole("tab", { name: tab, exact: true }).getAttribute("aria-selected"), "true");
+    await page.getByRole("tab", { name: "Plantas", exact: true }).click();
+    assert.equal(await page.locator("#plant-step-title").innerText(), "4. Classificação");
+  }
   await page.getByRole("button", { name: "Salvar", exact: true }).click();
   await page.getByText("Planta salva com sucesso.").waitFor();
   assert(uploaded); assert.equal(saved.imageUrl, "https://example.test/upload.webp");
