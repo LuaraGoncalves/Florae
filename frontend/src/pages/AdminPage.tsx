@@ -33,7 +33,14 @@ const emptyPlant: PlantPayload = {
   problemIds: []
 };
 
+const adminTabs = [
+  { id: "plants", label: "Plantas" },
+  { id: "categories", label: "Categorias" },
+  { id: "problems", label: "Problemas" }
+] as const;
+
 export function AdminPage() {
+  const [activeTab, setActiveTab] = useState<typeof adminTabs[number]["id"]>("plants");
   const plantsState = useAsync(() => api.listPlants(), []);
   const categoriesState = useAsync(() => api.listCategories(), []);
   const problemsState = useAsync(() => api.listProblems(), []);
@@ -163,15 +170,43 @@ export function AdminPage() {
     <section className="section-shell py-12">
       <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-leaf">administração</p>
-          <h1 className="mt-3 text-5xl font-semibold">Conteúdo do Florae</h1>
-          <p className="mt-4 max-w-2xl leading-7 text-primary/70">Gerencie plantas, categorias e problemas comuns usando a API.</p>
+          <p className="text-sm font-semibold uppercase text-leaf">administração</p>
+          <h1 className="mt-3 text-3xl font-semibold">Conteúdo do Florae</h1>
         </div>
-        <Badge>{message}</Badge>
+        <div role="status" aria-live="polite">{message && <Badge>{message}</Badge>}</div>
       </div>
 
-      <div className="grid gap-8 xl:grid-cols-[1fr_380px]">
-        <Card className="p-5">
+      <div role="tablist" aria-label="Cadastros" className="mb-8 flex border-b border-border">
+        {adminTabs.map((tab, index) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            id={`tab-${tab.id}`}
+            aria-controls={`panel-${tab.id}`}
+            aria-selected={activeTab === tab.id}
+            tabIndex={activeTab === tab.id ? 0 : -1}
+            className={`min-h-12 flex-1 border-b-2 px-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-none sm:px-6 ${activeTab === tab.id ? "border-primary text-primary" : "border-transparent text-primary/60 hover:bg-moss/20"}`}
+            onClick={() => { setActiveTab(tab.id); setMessage(""); }}
+            onKeyDown={(event) => {
+              let next = index;
+              if (event.key === "ArrowRight") next = (index + 1) % adminTabs.length;
+              else if (event.key === "ArrowLeft") next = (index + adminTabs.length - 1) % adminTabs.length;
+              else if (event.key === "Home") next = 0;
+              else if (event.key === "End") next = adminTabs.length - 1;
+              else return;
+              event.preventDefault();
+              setActiveTab(adminTabs[next].id);
+              setMessage("");
+              document.getElementById(`tab-${adminTabs[next].id}`)?.focus();
+            }}
+          >{tab.label}</button>
+        ))}
+      </div>
+
+      <div role="tabpanel" id="panel-plants" aria-labelledby="tab-plants" hidden={activeTab !== "plants"} tabIndex={0}>
+      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Plantas cadastradas</h2>
             <Button
@@ -198,6 +233,7 @@ export function AdminPage() {
                 </tr>
               </thead>
               <tbody>
+                {plants.length === 0 && <tr><td colSpan={4} className="py-8 text-primary/60">Nenhuma planta cadastrada.</td></tr>}
                 {plants.map((plant) => (
                   <tr key={plant.id} className="border-b border-border/70">
                     <td className="py-4">
@@ -232,7 +268,7 @@ export function AdminPage() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
 
         <Card className="p-5">
           <h2 className="mb-5 text-2xl font-semibold">{title}</h2>
@@ -296,9 +332,10 @@ export function AdminPage() {
           </form>
         </Card>
       </div>
+      </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-2">
-        <Card className="p-5">
+      <div role="tabpanel" id="panel-categories" aria-labelledby="tab-categories" hidden={activeTab !== "categories"} tabIndex={0}>
+        <div className="max-w-3xl">
           <h2 className="mb-5 text-2xl font-semibold">Categorias</h2>
           <form className="mb-5 grid gap-3" onSubmit={saveCategory}>
             <Input required placeholder="Nome da categoria" value={categoryForm.name} onChange={(event) => setCategoryForm({ ...categoryForm, name: event.target.value })} />
@@ -310,6 +347,7 @@ export function AdminPage() {
             </Button>
           </form>
           <div className="grid gap-3">
+            {categories.length === 0 && <p className="py-4 text-sm text-primary/60">Nenhuma categoria cadastrada.</p>}
             {categories.map((category) => (
               <div key={category.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-white p-3">
                 <div>
@@ -335,9 +373,11 @@ export function AdminPage() {
               </div>
             ))}
           </div>
-        </Card>
+        </div>
+      </div>
 
-        <Card className="p-5">
+      <div role="tabpanel" id="panel-problems" aria-labelledby="tab-problems" hidden={activeTab !== "problems"} tabIndex={0}>
+        <div className="max-w-3xl">
           <h2 className="mb-5 text-2xl font-semibold">Problemas comuns</h2>
           <form className="mb-5 grid gap-3" onSubmit={saveProblem}>
             <Input required placeholder="Nome do problema" value={problemForm.name} onChange={(event) => setProblemForm({ ...problemForm, name: event.target.value })} />
@@ -351,6 +391,7 @@ export function AdminPage() {
             </Button>
           </form>
           <div className="grid gap-3">
+            {problems.length === 0 && <p className="py-4 text-sm text-primary/60">Nenhum problema cadastrado.</p>}
             {problems.map((problem) => (
               <div key={problem.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-white p-3">
                 <div>
@@ -382,7 +423,7 @@ export function AdminPage() {
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       </div>
     </section>
   );
@@ -403,6 +444,7 @@ function CheckList<T extends Category | Problem>({
     <div className="rounded-md border border-border bg-white p-3">
       <p className="mb-2 text-sm font-semibold">{title}</p>
       <div className="grid gap-2">
+        {items.length === 0 && <p className="text-sm text-primary/60">Nenhuma opção cadastrada.</p>}
         {items.map((item) => (
           <label key={item.id} className="flex items-center gap-2 text-sm">
             <input

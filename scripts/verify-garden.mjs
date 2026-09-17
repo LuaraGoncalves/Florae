@@ -47,6 +47,26 @@ export async function verifyGarden(page, base, password) {
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await page.getByPlaceholder("Nome popular", { exact: true }).fill("Nova planta");
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const name of ["Categorias", "Problemas", "Plantas"]) {
+      await page.getByRole("tab", { name, exact: true }).click();
+      assert.equal(await page.getByRole("tabpanel").count(), 1);
+      assert.equal(await page.getByRole("tab", { name, exact: true }).getAttribute("aria-selected"), "true");
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      await page.screenshot({ path: `artifacts/admin-tab-${name}-${width}.png`, fullPage: true });
+    }
+    assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).inputValue(), "Nova planta");
+  }
+  await page.getByRole("tab", { name: "Plantas", exact: true }).focus();
+  await page.keyboard.press("ArrowRight");
+  assert.equal(await page.getByRole("tab", { name: "Categorias", exact: true }).getAttribute("aria-selected"), "true");
+  await page.getByPlaceholder("Nome da categoria", { exact: true }).fill("Categoria em andamento");
+  await page.getByRole("tab", { name: "Problemas", exact: true }).click();
+  await page.getByRole("tab", { name: "Categorias", exact: true }).click();
+  assert.equal(await page.getByPlaceholder("Nome da categoria", { exact: true }).inputValue(), "Categoria em andamento");
+  await page.getByRole("tab", { name: "Categorias", exact: true }).press("Home");
+  assert.equal(await page.getByRole("tab", { name: "Plantas", exact: true }).getAttribute("aria-selected"), "true");
   await page.getByPlaceholder("Nome científico", { exact: true }).fill("Species test");
   for (const label of ["Descrição", "Iluminação", "Rega", "Temperatura", "Umidade", "Substrato", "Adubação", "Poda", "Ambiente"]) await page.locator("fieldset").getByPlaceholder(label, { exact: true }).fill("Conteudo de teste valido");
   const input = page.getByLabel("Selecionar foto", { exact: true });
