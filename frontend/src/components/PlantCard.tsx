@@ -4,13 +4,16 @@ import { difficultyLabels } from "../lib/utils";
 import type { Plant } from "../types";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
+import { PlantActions } from "./PlantActions";
+import { PlantImage } from "./PlantImage";
 
 export function PlantCard({ plant }: { plant: Plant }) {
   return (
-    <Link to={`/plantas/${plant.slug}`} className="group block">
+    <div className="group min-w-0">
       <Card className="h-full overflow-hidden transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_70px_rgba(20,54,29,0.20)]">
+        <Link to={`/plantas/${plant.slug}`}>
         <div className="aspect-[4/3] overflow-hidden bg-mint">
-          <img className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={plant.imageUrl} alt={plant.name} />
+          <PlantImage className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={plant.imageUrl} alt={plant.name} />
         </div>
         <div className="space-y-4 p-5">
           <div className="flex items-start justify-between gap-3">
@@ -32,7 +35,9 @@ export function PlantCard({ plant }: { plant: Plant }) {
             </span>
           </div>
         </div>
+        </Link>
+        <div className="px-5 pb-5"><PlantActions plant={plant} /></div>
       </Card>
-    </Link>
+    </div>
   );
 }

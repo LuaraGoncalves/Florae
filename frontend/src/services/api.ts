@@ -8,8 +8,8 @@ export function hasSession() { return token !== null; }
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
-    signal: AbortSignal.timeout(15000),
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options?.headers }
+    signal: AbortSignal.timeout(options?.body instanceof FormData ? 60000 : 15000),
+    headers: { ...(options?.body instanceof FormData ? {} : { "Content-Type": "application/json" }), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options?.headers }
   }).catch(() => { throw new Error("Nao foi possivel conectar. Tente novamente em instantes."); });
 
   if (!response.ok) {
@@ -29,6 +29,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  imageStatus: () => request<{ enabled: boolean }>("/imagens/status"),
+  uploadImage(file: File) {
+    const body = new FormData();
+    body.append("image", file);
+    return request<{ imageUrl: string }>("/imagens", { method: "POST", body });
+  },
   async login(email: string, password: string) {
     const result = await request<{ token: string }>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
     token = result.token;

@@ -6,7 +6,9 @@ import { Button } from "./ui/button";
 const navItems = [
   { to: "/", label: "Início" },
   { to: "/plantas", label: "Plantas" },
-  { to: "/problemas", label: "Diagnóstico" }
+  { to: "/problemas", label: "Diagnóstico" },
+  { to: "/favoritos", label: "Favoritos" },
+  { to: "/minhas-plantas", label: "Minhas plantas" }
 ];
 
 export function Layout() {

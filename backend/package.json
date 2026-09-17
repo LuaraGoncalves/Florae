@@ -9,23 +9,27 @@
     "start": "node dist/src/server.js",
     "admin:setup": "tsx scripts/setupAdmin.ts",
     "prisma:deploy": "prisma migrate deploy",
-    "test": "tsx --test tests/auth.test.ts",
+    "test": "tsx --test tests/auth.test.ts tests/images.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
+    "cloudinary": "^2.11.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-rate-limit": "^8.7.0",
     "jose": "^6.2.12",
+    "multer": "^2.4.0",
+    "sharp": "^0.35.4",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.10.5",
     "prisma": "^6.1.0",
     "tsx": "^4.19.2",

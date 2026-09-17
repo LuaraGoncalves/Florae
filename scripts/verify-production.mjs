@@ -4,6 +4,7 @@ import { randomBytes, scryptSync } from "node:crypto";
 import { once } from "node:events";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "@playwright/test";
+import { verifyGarden } from "./verify-garden.mjs";
 
 const salt = randomBytes(16).toString("hex");
 const password = randomBytes(20).toString("hex");
@@ -25,7 +26,7 @@ try {
       if (url) { clearTimeout(timeout); resolve(url); }
     });
   });
-  for (const path of ["/", "/admin", "/plantas/teste"]) {
+  for (const path of ["/", "/admin", "/plantas/teste", "/favoritos", "/minhas-plantas"]) {
     const response = await fetch(`${base}${path}`);
     assert.equal(response.status, 200);
     assert.match(await response.text(), /id="root"/);
@@ -63,6 +64,7 @@ try {
   await page.route("**/api/plantas*", route => route.fulfill({ json: [] }));
   await page.getByRole("button", { name: "Tentar novamente" }).click();
   await page.getByText("Nenhuma planta encontrada", { exact: true }).waitFor();
+  await verifyGarden(page, base, password);
   assert.deepEqual(errors, []);
   console.log("OK: producao, rotas diretas, API protegida, login/logout, erro e recuperacao, desktop/mobile.");
 } finally {

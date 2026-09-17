@@ -9,6 +9,8 @@ import { useAsync } from "../hooks/useAsync";
 import { difficultyLabels } from "../lib/utils";
 import { api } from "../services/api";
 import { LoadError } from "../components/LoadError";
+import { ImagePicker } from "../components/ImagePicker";
+import { PlantImage } from "../components/PlantImage";
 import type { Category, Difficulty, Plant, PlantPayload, Problem } from "../types";
 
 const emptyPlant: PlantPayload = {
@@ -16,7 +18,7 @@ const emptyPlant: PlantPayload = {
   scientificName: "",
   slug: "",
   description: "",
-  imageUrl: "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=1200&q=80",
+  imageUrl: "",
   difficulty: "EASY",
   light: "",
   watering: "",
@@ -40,6 +42,8 @@ export function AdminPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
   const [form, setForm] = useState<PlantPayload>(emptyPlant);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
   const [categoryForm, setCategoryForm] = useState<Omit<Category, "id">>({ name: "", slug: "", description: "" });
   const [problemForm, setProblemForm] = useState<Omit<Problem, "id">>({ name: "", slug: "", description: "", causes: "", recommendation: "" });
   const plants = plantsState.data ?? [];
@@ -53,6 +57,8 @@ export function AdminPage() {
   if (plantsState.loading || categoriesState.loading || problemsState.loading) return <section className="section-shell py-12">Carregando...</section>;
 
   function editPlant(plant: Plant) {
+    if (saving) return;
+    setPhoto(null);
     setEditing(plant);
     setForm({
       name: plant.name,
@@ -77,15 +83,24 @@ export function AdminPage() {
 
   async function savePlant(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
-      const saved = editing ? await api.updatePlant(editing.id, form) : await api.createPlant(form);
+      let payload = form;
+      if (photo) {
+        const { imageUrl } = await api.uploadImage(photo);
+        payload = { ...form, imageUrl };
+        setForm(payload);
+        setPhoto(null);
+      }
+      const saved = editing ? await api.updatePlant(editing.id, payload) : await api.createPlant(payload);
       plantsState.setData(editing ? plants.map((plant) => (plant.id === saved.id ? saved : plant)) : [...plants, saved]);
       setEditing(null);
       setForm(emptyPlant);
       setMessage("Planta salva com sucesso.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível salvar.");
-    }
+    } finally { setSaving(false); }
   }
 
   async function removePlant(id: string) {
@@ -161,8 +176,10 @@ export function AdminPage() {
             <h2 className="text-2xl font-semibold">Plantas cadastradas</h2>
             <Button
               variant="dark"
+              disabled={saving}
               onClick={() => {
                 setEditing(null);
+                setPhoto(null);
                 setForm(emptyPlant);
               }}
             >
@@ -185,7 +202,7 @@ export function AdminPage() {
                   <tr key={plant.id} className="border-b border-border/70">
                     <td className="py-4">
                       <div className="flex items-center gap-3">
-                        <img className="h-12 w-12 rounded-md object-cover" src={plant.imageUrl} alt={plant.name} />
+                        <PlantImage className="h-12 w-12 rounded-md object-cover" src={plant.imageUrl} alt={plant.name} />
                         <div>
                           <p className="font-semibold">{plant.name}</p>
                           <p className="text-primary/55">{plant.scientificName}</p>
@@ -202,10 +219,10 @@ export function AdminPage() {
                     </td>
                     <td>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => editPlant(plant)}>
+                        <Button disabled={saving} variant="ghost" size="icon" aria-label="Editar" onClick={() => editPlant(plant)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" aria-label="Excluir" onClick={() => removePlant(plant.id)}>
+                        <Button disabled={saving} variant="ghost" size="icon" aria-label="Excluir" onClick={() => removePlant(plant.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -220,10 +237,11 @@ export function AdminPage() {
         <Card className="p-5">
           <h2 className="mb-5 text-2xl font-semibold">{title}</h2>
           <form className="grid gap-3" onSubmit={savePlant}>
+            <fieldset disabled={saving} className="grid min-w-0 gap-3">
             <Input required placeholder="Nome popular" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
             <Input required placeholder="Nome científico" value={form.scientificName} onChange={(event) => setForm({ ...form, scientificName: event.target.value })} />
             <Input placeholder="Slug" value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value })} />
-            <Input required placeholder="URL da imagem" value={form.imageUrl} onChange={(event) => setForm({ ...form, imageUrl: event.target.value })} />
+            <ImagePicker value={form.imageUrl} file={photo} disabled={saving} onChange={(file, imageUrl) => { setPhoto(file); setForm({ ...form, imageUrl }); }} />
             <select
               className="h-11 rounded-md border border-border bg-white px-4 text-sm"
               value={form.difficulty}
@@ -268,12 +286,13 @@ export function AdminPage() {
             <CheckList title="Problemas" items={problems} selected={form.problemIds} onChange={(problemIds) => setForm({ ...form, problemIds })} />
             <Button type="submit" variant="dark">
               <Save className="h-4 w-4" />
-              Salvar
+              {saving ? "Salvando..." : "Salvar"}
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setForm(emptyPlant)}>
+            <Button type="button" variant="ghost" onClick={() => { setForm(emptyPlant); setPhoto(null); setEditing(null); }}>
               <RefreshCcw className="h-4 w-4" />
               Limpar
             </Button>
+            </fieldset>
           </form>
         </Card>
       </div>

@@ -20,8 +20,10 @@ import {
 } from "./controllers/problemsController.js";
 import { asyncHandler } from "./utils/asyncHandler.js";
 import { login, loginLimiter, requireAdmin } from "./auth.js";
+import { createImageRouter } from "./imageRoutes.js";
 
 export const routes = Router();
+routes.use("/imagens", createImageRouter());
 routes.post("/auth/login", loginLimiter, login);
 routes.get("/auth/me", requireAdmin, (_request, response) => response.json({ role: "admin" }));
 routes.use((request, response, next) => {

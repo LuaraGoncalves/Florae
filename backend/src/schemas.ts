@@ -7,7 +7,7 @@ export const plantSchema = z.object({
   scientificName: z.string().min(2),
   slug: z.string().optional(),
   description: z.string().min(10),
-  imageUrl: z.string().url(),
+  imageUrl: z.union([z.literal(""), z.string().url().refine(value => /^https?:\/\//i.test(value), "URL inválida")]).default(""),
   difficulty: difficultySchema,
   light: z.string().min(2),
   watering: z.string().min(2),

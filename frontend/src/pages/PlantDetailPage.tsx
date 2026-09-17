@@ -8,6 +8,8 @@ import { useAsync } from "../hooks/useAsync";
 import { difficultyLabels } from "../lib/utils";
 import { api } from "../services/api";
 import { LoadError } from "../components/LoadError";
+import { PlantImage } from "../components/PlantImage";
+import { PlantActions } from "../components/PlantActions";
 
 export function PlantDetailPage() {
   const { id = "" } = useParams();
@@ -46,7 +48,7 @@ export function PlantDetailPage() {
       <section className="bg-primary text-cream">
         <div className="section-shell grid gap-10 py-14 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div className="overflow-hidden rounded-lg bg-leaf">
-            <img className="aspect-[4/5] h-full w-full object-cover" src={plant.imageUrl} alt={plant.name} />
+            <PlantImage className="aspect-[4/5] h-full w-full object-cover" src={plant.imageUrl} alt={plant.name} />
           </div>
           <div>
             <div className="mb-5 flex flex-wrap gap-2">
@@ -59,6 +61,7 @@ export function PlantDetailPage() {
             </div>
             <h1 className="font-display text-6xl leading-none text-moss sm:text-7xl">{plant.name}</h1>
             <p className="mt-3 text-lg italic text-cream/65">{plant.scientificName}</p>
+            <div className="mt-5 rounded-md bg-cream p-4"><PlantActions plant={plant} /></div>
             <p className="mt-8 max-w-2xl text-lg leading-8 text-cream/75">{plant.description}</p>
             <p className="mt-6 rounded-lg border border-moss/30 bg-cream/10 p-5 text-sm leading-6 text-cream/75">{plant.environment}</p>
           </div>
