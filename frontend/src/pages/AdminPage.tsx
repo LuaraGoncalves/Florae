@@ -1,4 +1,4 @@
-import { Pencil, Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Pencil, Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { Badge } from "../components/ui/badge";
@@ -38,8 +38,10 @@ const adminTabs = [
   { id: "categories", label: "Categorias" },
   { id: "problems", label: "Problemas" }
 ] as const;
+const plantSteps = ["Identificação", "Ambiente", "Cuidados", "Classificação"];
 
 export function AdminPage() {
+  const [step, setStep] = useState(0);
   const [activeTab, setActiveTab] = useState<typeof adminTabs[number]["id"]>("plants");
   const plantsState = useAsync(() => api.listPlants(), []);
   const categoriesState = useAsync(() => api.listCategories(), []);
@@ -75,6 +77,7 @@ export function AdminPage() {
 
   function editPlant(plant: Plant) {
     if (saving) return;
+    setStep(0);
     setPhoto(null);
     setEditing(plant);
     setForm({
@@ -101,6 +104,11 @@ export function AdminPage() {
   async function savePlant(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
+    if (step < plantSteps.length - 1) {
+      setStep(step + 1);
+      requestAnimationFrame(() => document.getElementById("plant-step-title")?.focus());
+      return;
+    }
     setSaving(true);
     try {
       let payload = form;
@@ -114,6 +122,7 @@ export function AdminPage() {
       plantsState.setData(editing ? plants.map((plant) => (plant.id === saved.id ? saved : plant)) : [...plants, saved]);
       setEditing(null);
       setForm(emptyPlant);
+      setStep(0);
       setMessage("Planta salva com sucesso.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível salvar.");
@@ -215,7 +224,7 @@ export function AdminPage() {
       </div>
 
       <div role="tabpanel" id="panel-plants" aria-labelledby="tab-plants" hidden={activeTab !== "plants"} tabIndex={0}>
-      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid items-start gap-8">
         <div className="min-w-0">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Plantas cadastradas</h2>
@@ -226,6 +235,7 @@ export function AdminPage() {
                 setEditing(null);
                 setPhoto(null);
                 setForm(emptyPlant);
+                setStep(0);
               }}
             >
               <Plus className="h-4 w-4" />
@@ -282,13 +292,30 @@ export function AdminPage() {
 
         <Card className="p-5">
           <h2 className="mb-5 text-2xl font-semibold">{title}</h2>
+          <ol aria-label="Etapas do cadastro" className="mb-6 grid grid-cols-4">
+            {plantSteps.map((label, index) => (
+              <li key={label} className={`min-w-0 border-t-2 pt-3 ${index <= step ? "border-primary" : "border-border"}`}>
+                <button type="button" disabled={saving || index > step} onClick={() => setStep(index)} aria-current={index === step ? "step" : undefined} className="flex w-full flex-col items-center gap-2 px-1 text-xs disabled:cursor-default focus-visible:outline-primary sm:text-sm">
+                  <span className={`flex h-7 w-7 items-center justify-center rounded-full ${index <= step ? "bg-primary text-white" : "bg-moss/30 text-primary"}`}>
+                    {index < step ? <Check className="h-4 w-4" aria-label="Concluída" /> : index + 1}
+                  </span>
+                  <span className="max-w-full break-words">{label}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <h3 id="plant-step-title" tabIndex={-1} className="mb-4 text-lg font-semibold outline-none">{step + 1}. {plantSteps[step]}</h3>
           <form className="grid gap-3" onSubmit={savePlant}>
             <fieldset disabled={saving} className="grid min-w-0 gap-3">
+            {step === 0 && <>
             <Input required placeholder="Nome popular" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
             <Input required placeholder="Nome científico" value={form.scientificName} onChange={(event) => setForm({ ...form, scientificName: event.target.value })} />
             <Input placeholder="Slug" value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value })} />
             <ImagePicker value={form.imageUrl} file={photo} disabled={saving} onChange={(file, imageUrl) => { setPhoto(file); setForm({ ...form, imageUrl }); }} />
+            </>}
+            {step === 2 && <>
             <select
+              aria-label="Dificuldade"
               className="h-11 rounded-md border border-border bg-white px-4 text-sm"
               value={form.difficulty}
               onChange={(event) => setForm({ ...form, difficulty: event.target.value as Difficulty })}
@@ -297,6 +324,7 @@ export function AdminPage() {
               <option value="MEDIUM">Médio</option>
               <option value="HARD">Difícil</option>
             </select>
+            </>}
             {[
               ["description", "Descrição"],
               ["light", "Iluminação"],
@@ -307,7 +335,9 @@ export function AdminPage() {
               ["fertilizing", "Adubação"],
               ["pruning", "Poda"],
               ["environment", "Ambiente"]
-            ].map(([key, label]) => (
+            ].filter(([key]) => (step === 0 && key === "description") || (step === 1 && ["light", "temperature", "humidity", "environment"].includes(key)) || (step === 2 && ["watering", "substrate", "fertilizing", "pruning"].includes(key))).map(([key, label]) => (
+              <label key={key} className="grid gap-2 text-sm font-medium">
+              {label}
               <textarea
                 key={key}
                 required
@@ -316,13 +346,17 @@ export function AdminPage() {
                 value={String(form[key as keyof PlantPayload])}
                 onChange={(event) => setForm({ ...form, [key]: event.target.value })}
               />
+              </label>
             ))}
+            {step === 2 && <>
             <textarea
               className="min-h-24 rounded-md border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-moss/40"
               placeholder="Dicas, uma por linha"
               value={tipText}
               onChange={(event) => setForm({ ...form, tips: event.target.value.split("\n").filter(Boolean) })}
             />
+            </>}
+            {step === 3 && <>
             <CheckList
               title="Categorias"
               description="Grupos de plantas, como suculentas ou plantas de interior."
@@ -333,11 +367,15 @@ export function AdminPage() {
               onChange={(categoryIds) => setForm({ ...form, categoryIds })}
             />
             <CheckList title="Problemas" description="Condições que podem afetar a planta, como folhas amareladas ou cochonilhas." emptyMessage="Nenhum problema cadastrado." onManage={() => openCatalog("problems")} items={problems} selected={form.problemIds} onChange={(problemIds) => setForm({ ...form, problemIds })} />
+            </>}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+            <Button type="button" variant="ghost" disabled={step === 0} onClick={() => setStep(step - 1)}><ArrowLeft className="h-4 w-4" />Voltar</Button>
             <Button type="submit" variant="dark">
-              <Save className="h-4 w-4" />
-              {saving ? "Salvando..." : "Salvar"}
+              {step === 3 ? <Save className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+              {saving ? "Salvando..." : step === 3 ? "Salvar" : "Continuar"}
             </Button>
-            <Button type="button" variant="ghost" onClick={() => { setForm(emptyPlant); setPhoto(null); setEditing(null); }}>
+            </div>
+            <Button type="button" variant="ghost" onClick={() => { setForm(emptyPlant); setPhoto(null); setEditing(null); setStep(0); }}>
               <RefreshCcw className="h-4 w-4" />
               Limpar
             </Button>
