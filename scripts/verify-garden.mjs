@@ -96,7 +96,11 @@ export async function verifyGarden(page, base, password) {
     await page.getByRole("button", { name: button, exact: true }).click();
     assert.equal(await page.getByRole("tab", { name: tab, exact: true }).getAttribute("aria-selected"), "true");
     await page.getByRole("tab", { name: "Plantas", exact: true }).click();
-    assert.equal(await page.locator("#plant-step-title").innerText(), "4. Classificação");
+    assert.equal(await page.locator("#plant-step-title").innerText(), tab === "Categorias" ? "4. Categorias" : "5. Problemas");
+    if (tab === "Categorias") {
+      assert.equal(await page.getByRole("button", { name: "Salvar", exact: true }).count(), 0);
+      await page.getByRole("button", { name: "Continuar", exact: true }).click();
+    }
   }
   await page.getByRole("button", { name: "Salvar", exact: true }).click();
   await page.getByText("Planta salva com sucesso.").waitFor();
