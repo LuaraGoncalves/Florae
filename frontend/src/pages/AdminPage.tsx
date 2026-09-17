@@ -38,7 +38,7 @@ const adminTabs = [
   { id: "categories", label: "Categorias" },
   { id: "problems", label: "Problemas" }
 ] as const;
-const plantSteps = ["Identificação", "Ambiente", "Cuidados", "Classificação"];
+const plantSteps = ["Identificação", "Ambiente", "Cuidados", "Categorias", "Problemas"];
 
 export function AdminPage() {
   const [plantEditorOpen, setPlantEditorOpen] = useState(false);
@@ -299,7 +299,7 @@ export function AdminPage() {
             <h2 className="min-w-0 break-words text-2xl font-semibold">{title}</h2>
             <Button type="button" variant="ghost" size="icon" disabled={saving} aria-label="Fechar cadastro" title="Fechar cadastro" onClick={() => setPlantEditorOpen(false)}><X className="h-4 w-4" /></Button>
           </div>
-          <ol aria-label="Etapas do cadastro" className="mb-6 grid grid-cols-4">
+          <ol aria-label="Etapas do cadastro" className="mb-6 grid grid-cols-5">
             {plantSteps.map((label, index) => (
               <li key={label} className="relative min-w-0">
                 {index < plantSteps.length - 1 && <span aria-hidden="true" className={`absolute left-1/2 top-3.5 h-0.5 w-full ${index < step ? "bg-primary" : "bg-border"}`} />}
@@ -307,7 +307,7 @@ export function AdminPage() {
                   <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-4 border-white ${index < step ? "bg-primary text-white" : index === step ? "bg-emerald-600 text-white ring-2 ring-emerald-600" : "bg-border text-primary"}`}>
                     {index < step ? <Check className="h-3 w-3" aria-label="Concluída" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                   </span>
-                  <span className="max-w-full break-words">{label}</span>
+                  <span className="max-w-full break-words [overflow-wrap:anywhere]">{label}</span>
                 </button>
               </li>
             ))}
@@ -374,13 +374,15 @@ export function AdminPage() {
               selected={form.categoryIds}
               onChange={(categoryIds) => setForm({ ...form, categoryIds })}
             />
+            </>}
+            {step === 4 && <>
             <CheckList title="Problemas" description="Condições que podem afetar a planta, como folhas amareladas ou cochonilhas." emptyMessage="Nenhum problema cadastrado." onManage={() => openCatalog("problems")} items={problems} selected={form.problemIds} onChange={(problemIds) => setForm({ ...form, problemIds })} />
             </>}
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
             <Button type="button" variant="ghost" disabled={step === 0} onClick={() => setStep(step - 1)}><ArrowLeft className="h-4 w-4" />Voltar</Button>
             <Button type="submit" variant="dark">
-              {step === 3 ? <Save className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-              {saving ? "Salvando..." : step === 3 ? "Salvar" : "Continuar"}
+              {step === plantSteps.length - 1 ? <Save className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+              {saving ? "Salvando..." : step === plantSteps.length - 1 ? "Salvar" : "Continuar"}
             </Button>
             </div>
             <Button type="button" variant="ghost" onClick={() => { setForm(emptyPlant); setPhoto(null); setEditing(null); setStep(0); }}>
