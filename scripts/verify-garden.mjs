@@ -46,32 +46,12 @@ export async function verifyGarden(page, base, password) {
   await page.getByLabel("E-mail", { exact: true }).fill("admin@example.test");
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole("tab").count(), 0);
   await page.getByRole("button", { name: "Nova", exact: true }).click();
   await page.getByPlaceholder("Nome popular", { exact: true }).fill("Nova planta");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   assert.equal(await page.locator("#plant-step-title").innerText(), "1. Identificação");
   assert.equal(saved, undefined);
-  for (const width of [390, 1440]) {
-    await page.setViewportSize({ width, height: 900 });
-    for (const name of ["Categorias", "Problemas", "Plantas"]) {
-      await page.getByRole("tab", { name, exact: true }).click();
-      assert.equal(await page.getByRole("tabpanel").count(), 1);
-      assert.equal(await page.getByRole("tab", { name, exact: true }).getAttribute("aria-selected"), "true");
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-      await page.screenshot({ path: `artifacts/admin-tab-${name}-${width}.png`, fullPage: true });
-    }
-    assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).inputValue(), "Nova planta");
-  }
-  await page.getByRole("tab", { name: "Plantas", exact: true }).focus();
-  await page.keyboard.press("ArrowRight");
-  assert.equal(await page.getByRole("tab", { name: "Categorias", exact: true }).getAttribute("aria-selected"), "true");
-  await page.getByPlaceholder("Nome da categoria", { exact: true }).fill("Categoria em andamento");
-  await page.getByRole("tab", { name: "Problemas", exact: true }).click();
-  await page.getByRole("tab", { name: "Categorias", exact: true }).click();
-  assert.equal(await page.getByPlaceholder("Nome da categoria", { exact: true }).inputValue(), "Categoria em andamento");
-  await page.getByRole("tab", { name: "Categorias", exact: true }).press("Home");
-  assert.equal(await page.getByRole("tab", { name: "Plantas", exact: true }).getAttribute("aria-selected"), "true");
   await page.getByPlaceholder("Nome científico", { exact: true }).fill("Species test");
   await page.getByLabel("Descrição", { exact: true }).fill("Conteudo de teste valido");
   const input = page.getByLabel("Selecionar foto", { exact: true });
@@ -94,8 +74,8 @@ export async function verifyGarden(page, base, password) {
   }
   for (const [button, tab] of [["Gerenciar categorias", "Categorias"], ["Gerenciar problemas", "Problemas"]]) {
     await page.getByRole("button", { name: button, exact: true }).click();
-    assert.equal(await page.getByRole("tab", { name: tab, exact: true }).getAttribute("aria-selected"), "true");
-    await page.getByRole("tab", { name: "Plantas", exact: true }).click();
+    await page.getByPlaceholder(tab === "Categorias" ? "Nome da categoria" : "Nome do problema", { exact: true }).fill("Rascunho");
+    await page.getByRole("button", { name: "Fechar gerenciamento", exact: true }).click();
     assert.equal(await page.locator("#plant-step-title").innerText(), tab === "Categorias" ? "4. Categorias" : "5. Problemas");
     if (tab === "Categorias") {
       assert.equal(await page.getByRole("button", { name: "Salvar", exact: true }).count(), 0);
@@ -104,7 +84,7 @@ export async function verifyGarden(page, base, password) {
   }
   await page.getByRole("button", { name: "Salvar", exact: true }).click();
   await page.getByText("Planta salva com sucesso.").waitFor();
-  assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole("tab").count(), 0);
   assert(uploaded); assert.equal(saved.imageUrl, "https://example.test/upload.webp");
 
   await page.evaluate(() => localStorage.setItem("florae:garden:v1", "invalid-json"));

@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, Pencil, Plus, RefreshCcw, Save, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Pencil, Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { Badge } from "../components/ui/badge";
@@ -6,11 +6,9 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { useAsync } from "../hooks/useAsync";
-import { difficultyLabels } from "../lib/utils";
 import { api } from "../services/api";
 import { LoadError } from "../components/LoadError";
 import { ImagePicker } from "../components/ImagePicker";
-import { PlantImage } from "../components/PlantImage";
 import type { Category, Difficulty, Plant, PlantPayload, Problem } from "../types";
 
 const emptyPlant: PlantPayload = {
@@ -33,17 +31,11 @@ const emptyPlant: PlantPayload = {
   problemIds: []
 };
 
-const adminTabs = [
-  { id: "plants", label: "Plantas" },
-  { id: "categories", label: "Categorias" },
-  { id: "problems", label: "Problemas" }
-] as const;
 const plantSteps = ["Identificação", "Ambiente", "Cuidados", "Categorias", "Problemas"];
 
 export function AdminPage() {
-  const [plantEditorOpen, setPlantEditorOpen] = useState(false);
   const [step, setStep] = useState(0);
-  const [activeTab, setActiveTab] = useState<typeof adminTabs[number]["id"]>("plants");
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const plantsState = useAsync(() => api.listPlants(), []);
   const categoriesState = useAsync(() => api.listCategories(), []);
   const problemsState = useAsync(() => api.listProblems(), []);
@@ -60,14 +52,9 @@ export function AdminPage() {
   const categories = categoriesState.data ?? [];
   const problems = problemsState.data ?? [];
 
-  function openCatalog(tab: "categories" | "problems") {
-    setActiveTab(tab);
-    setMessage("");
-    requestAnimationFrame(() => {
-      const target = document.getElementById(`tab-${tab}`);
-      target?.focus();
-      target?.scrollIntoView({ block: "start", behavior: "smooth" });
-    });
+  function openCatalog() {
+    setCatalogOpen(true);
+    requestAnimationFrame(() => document.getElementById("catalog-editor")?.scrollIntoView({ block: "center" }));
   }
 
   const title = editing ? `Editando ${editing.name}` : "Nova planta";
@@ -78,7 +65,6 @@ export function AdminPage() {
 
   function editPlant(plant: Plant) {
     if (saving) return;
-    setPlantEditorOpen(true);
     setStep(0);
     setPhoto(null);
     setEditing(plant);
@@ -126,7 +112,6 @@ export function AdminPage() {
       setForm(emptyPlant);
       setStep(0);
       setMessage("Planta salva com sucesso.");
-      setPlantEditorOpen(false);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível salvar.");
     } finally { setSaving(false); }
@@ -136,6 +121,7 @@ export function AdminPage() {
     try {
       await api.deletePlant(id);
       plantsState.setData(plants.filter((plant) => plant.id !== id));
+      setEditing(null); setForm(emptyPlant); setPhoto(null); setStep(0);
       setMessage("Planta excluída.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível excluir.");
@@ -149,6 +135,8 @@ export function AdminPage() {
       categoriesState.setData(editingCategory ? categories.map((item) => (item.id === saved.id ? saved : item)) : [...categories, saved]);
       setEditingCategory(null);
       setCategoryForm({ name: "", slug: "", description: "" });
+      setForm(current => ({ ...current, categoryIds: [...new Set([...current.categoryIds, saved.id])] }));
+      setCatalogOpen(false);
       setMessage("Categoria salva.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível salvar a categoria.");
@@ -159,6 +147,7 @@ export function AdminPage() {
     try {
       await api.deleteCategory(id);
       categoriesState.setData(categories.filter((item) => item.id !== id));
+      setForm(current => ({ ...current, categoryIds: current.categoryIds.filter(value => value !== id) }));
       setMessage("Categoria excluída.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível excluir a categoria.");
@@ -172,6 +161,8 @@ export function AdminPage() {
       problemsState.setData(editingProblem ? problems.map((item) => (item.id === saved.id ? saved : item)) : [...problems, saved]);
       setEditingProblem(null);
       setProblemForm({ name: "", slug: "", description: "", causes: "", recommendation: "" });
+      setForm(current => ({ ...current, problemIds: [...new Set([...current.problemIds, saved.id])] }));
+      setCatalogOpen(false);
       setMessage("Problema salvo.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível salvar o problema.");
@@ -182,6 +173,7 @@ export function AdminPage() {
     try {
       await api.deleteProblem(id);
       problemsState.setData(problems.filter((item) => item.id !== id));
+      setForm(current => ({ ...current, problemIds: current.problemIds.filter(value => value !== id) }));
       setMessage("Problema excluído.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível excluir o problema.");
@@ -198,107 +190,24 @@ export function AdminPage() {
         <div role="status" aria-live="polite">{message && <Badge>{message}</Badge>}</div>
       </div>
 
-      <div role="tablist" aria-label="Cadastros" className="mb-8 flex border-b border-border">
-        {adminTabs.map((tab, index) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            id={`tab-${tab.id}`}
-            aria-controls={`panel-${tab.id}`}
-            aria-selected={activeTab === tab.id}
-            tabIndex={activeTab === tab.id ? 0 : -1}
-            className={`min-h-12 flex-1 border-b-2 px-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-none sm:px-6 ${activeTab === tab.id ? "border-primary text-primary" : "border-transparent text-primary/60 hover:bg-moss/20"}`}
-            onClick={() => { setActiveTab(tab.id); setMessage(""); }}
-            onKeyDown={(event) => {
-              let next = index;
-              if (event.key === "ArrowRight") next = (index + 1) % adminTabs.length;
-              else if (event.key === "ArrowLeft") next = (index + adminTabs.length - 1) % adminTabs.length;
-              else if (event.key === "Home") next = 0;
-              else if (event.key === "End") next = adminTabs.length - 1;
-              else return;
-              event.preventDefault();
-              setActiveTab(adminTabs[next].id);
-              setMessage("");
-              document.getElementById(`tab-${adminTabs[next].id}`)?.focus();
-            }}
-          >{tab.label}</button>
-        ))}
+      <div className="mb-6 flex flex-wrap items-end gap-3">
+        <label className="grid min-w-0 flex-1 gap-2 text-sm font-medium">
+          Planta
+          <select aria-label="Planta cadastrada" disabled={saving} className="h-11 w-full rounded-md border border-border bg-white px-3" value={editing?.id ?? ""} onChange={(event) => {
+            const plant = plants.find((item) => item.id === event.target.value);
+            if (plant) editPlant(plant);
+            else { setEditing(null); setForm(emptyPlant); setPhoto(null); setStep(0); }
+            setCatalogOpen(false);
+          }}>
+            <option value="">Nova planta</option>
+            {plants.map((plant) => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
+          </select>
+        </label>
+        <Button disabled={saving} type="button" variant="ghost" onClick={() => { setEditing(null); setForm(emptyPlant); setPhoto(null); setStep(0); setCatalogOpen(false); }}><Plus className="h-4 w-4" />Nova</Button>
+        {editing && <Button disabled={saving} type="button" variant="ghost" aria-label="Excluir planta" onClick={() => { if (window.confirm("Excluir esta planta?")) void removePlant(editing.id); }}><Trash2 className="h-4 w-4" /></Button>}
       </div>
-
-      <div role="tabpanel" id="panel-plants" aria-labelledby="tab-plants" hidden={activeTab !== "plants"} tabIndex={0}>
-      <div className={`grid items-start gap-8 ${plantEditorOpen ? "xl:grid-cols-[minmax(0,1fr)_minmax(440px,1fr)]" : ""}`}>
-        <div className="min-w-0">
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Plantas cadastradas</h2>
-            <Button
-              variant="dark"
-              disabled={saving}
-              onClick={() => {
-                setPlantEditorOpen(true);
-                setEditing(null);
-                setPhoto(null);
-                setForm(emptyPlant);
-                setStep(0);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              Nova
-            </Button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-border text-primary/60">
-                  <th className="py-3">Planta</th>
-                  <th>Dificuldade</th>
-                  <th>Categorias</th>
-                  <th className="w-32">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {plants.length === 0 && <tr><td colSpan={4} className="py-8 text-primary/60">Nenhuma planta cadastrada.</td></tr>}
-                {plants.map((plant) => (
-                  <tr key={plant.id} className="border-b border-border/70">
-                    <td className="py-4">
-                      <div className="flex items-center gap-3">
-                        <PlantImage className="h-12 w-12 rounded-md object-cover" src={plant.imageUrl} alt={plant.name} />
-                        <div>
-                          <p className="font-semibold">{plant.name}</p>
-                          <p className="text-primary/55">{plant.scientificName}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td>{difficultyLabels[plant.difficulty]}</td>
-                    <td>
-                      <div className="flex flex-wrap gap-1">
-                        {plant.categories.map(({ category }) => (
-                          <Badge key={category.id}>{category.name}</Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex gap-2">
-                        <Button disabled={saving} variant="ghost" size="icon" aria-label="Editar" onClick={() => editPlant(plant)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button disabled={saving} variant="ghost" size="icon" aria-label="Excluir" onClick={() => removePlant(plant.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {plantEditorOpen && <Card className="min-w-0 p-4 sm:p-5">
-          <div className="mb-6 flex items-start justify-between gap-3">
-            <h2 className="min-w-0 break-words text-2xl font-semibold">{title}</h2>
-            <Button type="button" variant="ghost" size="icon" disabled={saving} aria-label="Fechar cadastro" title="Fechar cadastro" onClick={() => setPlantEditorOpen(false)}><X className="h-4 w-4" /></Button>
-          </div>
+      <Card className="min-w-0 p-4 sm:p-5">
+          <h2 className="mb-6 break-words text-2xl font-semibold">{title}</h2>
           <ol aria-label="Etapas do cadastro" className="mb-6 grid grid-cols-5">
             {plantSteps.map((label, index) => (
               <li key={label} className="relative min-w-0">
@@ -369,14 +278,14 @@ export function AdminPage() {
               title="Categorias"
               description="Grupos de plantas, como suculentas ou plantas de interior."
               emptyMessage="Nenhuma categoria cadastrada."
-              onManage={() => openCatalog("categories")}
+              onManage={openCatalog}
               items={categories}
               selected={form.categoryIds}
               onChange={(categoryIds) => setForm({ ...form, categoryIds })}
             />
             </>}
             {step === 4 && <>
-            <CheckList title="Problemas" description="Condições que podem afetar a planta, como folhas amareladas ou cochonilhas." emptyMessage="Nenhum problema cadastrado." onManage={() => openCatalog("problems")} items={problems} selected={form.problemIds} onChange={(problemIds) => setForm({ ...form, problemIds })} />
+            <CheckList title="Problemas" description="Condições que podem afetar a planta, como folhas amareladas ou cochonilhas." emptyMessage="Nenhum problema cadastrado." onManage={openCatalog} items={problems} selected={form.problemIds} onChange={(problemIds) => setForm({ ...form, problemIds })} />
             </>}
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
             <Button type="button" variant="ghost" disabled={step === 0} onClick={() => setStep(step - 1)}><ArrowLeft className="h-4 w-4" />Voltar</Button>
@@ -391,11 +300,8 @@ export function AdminPage() {
             </Button>
             </fieldset>
           </form>
-        </Card>}
-      </div>
-      </div>
 
-      <div role="tabpanel" id="panel-categories" aria-labelledby="tab-categories" hidden={activeTab !== "categories"} tabIndex={0}>
+      <div id={step === 3 ? "catalog-editor" : undefined} hidden={step !== 3 || !catalogOpen} className="mt-6 border-t border-border pt-6">
         <div className="max-w-3xl">
           <h2 className="text-2xl font-semibold">Categorias</h2>
           <p className="mb-5 mt-2 text-sm text-primary/70">Grupos de plantas com características em comum, como suculentas ou plantas de interior.</p>
@@ -438,7 +344,7 @@ export function AdminPage() {
         </div>
       </div>
 
-      <div role="tabpanel" id="panel-problems" aria-labelledby="tab-problems" hidden={activeTab !== "problems"} tabIndex={0}>
+      <div id={step === 4 ? "catalog-editor" : undefined} hidden={step !== 4 || !catalogOpen} className="mt-6 border-t border-border pt-6">
         <div className="max-w-3xl">
           <h2 className="text-2xl font-semibold">Problemas comuns</h2>
           <p className="mb-5 mt-2 text-sm text-primary/70">Pragas, doenças e sintomas das plantas, com suas possíveis causas e recomendações de cuidado.</p>
@@ -488,6 +394,8 @@ export function AdminPage() {
           </div>
         </div>
       </div>
+        {catalogOpen && step >= 3 && <Button type="button" variant="ghost" onClick={() => setCatalogOpen(false)}>Fechar gerenciamento</Button>}
+      </Card>
     </section>
   );
 }
