@@ -46,8 +46,22 @@ export async function verifyGarden(page, base, password) {
   await page.getByLabel("E-mail", { exact: true }).fill("admin@example.test");
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  assert.equal(await page.getByRole("tab").count(), 0);
-  await page.getByRole("button", { name: "Nova", exact: true }).click();
+  await page.getByRole("tab", { name: "Plantas cadastradas", exact: true }).waitFor();
+  assert.equal(await page.getByRole("tab").count(), 2);
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.screenshot({ path: `artifacts/admin-list-${width}.png`, fullPage: true });
+  }
+  await page.getByRole("button", { name: "Editar Planta teste", exact: true }).click();
+  assert.equal(await page.getByRole("tab", { name: "Adicionar planta", exact: true }).getAttribute("aria-selected"), "true");
+  assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).inputValue(), "Planta teste");
+  await page.getByRole("button", { name: "Limpar", exact: true }).click();
+  await page.getByRole("tab", { name: "Plantas cadastradas", exact: true }).click();
+  page.once("dialog", dialog => dialog.dismiss());
+  await page.getByRole("button", { name: "Excluir Planta teste", exact: true }).click();
+  await page.getByRole("button", { name: "Editar Planta teste", exact: true }).waitFor();
+  await page.getByRole("tab", { name: "Adicionar planta", exact: true }).click();
   await page.getByPlaceholder("Nome popular", { exact: true }).fill("Nova planta");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   assert.equal(await page.locator("#plant-step-title").innerText(), "1. Identificação");
@@ -84,7 +98,8 @@ export async function verifyGarden(page, base, password) {
   }
   await page.getByRole("button", { name: "Salvar", exact: true }).click();
   await page.getByText("Planta salva com sucesso.").waitFor();
-  assert.equal(await page.getByRole("tab").count(), 0);
+  assert.equal(await page.getByRole("tab", { name: "Plantas cadastradas", exact: true }).getAttribute("aria-selected"), "true");
+  await page.getByRole("button", { name: "Editar Nova planta", exact: true }).waitFor();
   assert(uploaded); assert.equal(saved.imageUrl, "https://example.test/upload.webp");
 
   await page.evaluate(() => localStorage.setItem("florae:garden:v1", "invalid-json"));

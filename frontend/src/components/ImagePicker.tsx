@@ -12,7 +12,7 @@ export function ImagePicker({ value, file, onChange, disabled }: { value: string
   useEffect(() => { if (!file) { setPreview(""); return; } const url = URL.createObjectURL(file); setPreview(url); return () => URL.revokeObjectURL(url); }, [file]);
   return <div className="grid min-w-0 gap-3">
     <span className="text-sm font-semibold">Foto</span>
-    <PlantImage src={preview || value} alt="Foto selecionada" className="aspect-[4/3] w-full rounded-md object-cover" />
+    <PlantImage src={preview || value} alt="Foto selecionada" className="h-28 w-28 max-w-full rounded-md object-cover" />
     <label className={`flex items-center gap-2 text-sm font-semibold ${disabled || !enabled ? "opacity-50" : "cursor-pointer"}`}>
       <Upload className="h-4 w-4" />Selecionar foto
       <input aria-label="Selecionar foto" className="min-w-0 w-full text-xs" type="file" accept="image/jpeg,image/png,image/webp" disabled={disabled || !enabled} onChange={event => {
