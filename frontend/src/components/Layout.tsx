@@ -55,7 +55,6 @@ export function Layout() {
             </div>
             <p className="mt-2 max-w-xl text-sm text-cream/70">Guia elegante para conhecer, cuidar e administrar informações sobre plantas.</p>
           </div>
-          <p className="text-sm text-cream/60">React + Tailwind + Express + Prisma</p>
         </div>
       </footer>
     </div>
