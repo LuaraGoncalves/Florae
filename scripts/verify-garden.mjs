@@ -46,6 +46,8 @@ export async function verifyGarden(page, base, password) {
   await page.getByLabel("E-mail", { exact: true }).fill("admin@example.test");
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).count(), 0);
+  await page.getByRole("button", { name: "Nova", exact: true }).click();
   await page.getByPlaceholder("Nome popular", { exact: true }).fill("Nova planta");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   assert.equal(await page.locator("#plant-step-title").innerText(), "1. Identificação");
@@ -98,6 +100,7 @@ export async function verifyGarden(page, base, password) {
   }
   await page.getByRole("button", { name: "Salvar", exact: true }).click();
   await page.getByText("Planta salva com sucesso.").waitFor();
+  assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).count(), 0);
   assert(uploaded); assert.equal(saved.imageUrl, "https://example.test/upload.webp");
 
   await page.evaluate(() => localStorage.setItem("florae:garden:v1", "invalid-json"));
