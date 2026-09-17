@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, Pencil, Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Pencil, Plus, RefreshCcw, Save, Trash2, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { Badge } from "../components/ui/badge";
@@ -41,6 +41,7 @@ const adminTabs = [
 const plantSteps = ["Identificação", "Ambiente", "Cuidados", "Classificação"];
 
 export function AdminPage() {
+  const [plantEditorOpen, setPlantEditorOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [activeTab, setActiveTab] = useState<typeof adminTabs[number]["id"]>("plants");
   const plantsState = useAsync(() => api.listPlants(), []);
@@ -77,6 +78,7 @@ export function AdminPage() {
 
   function editPlant(plant: Plant) {
     if (saving) return;
+    setPlantEditorOpen(true);
     setStep(0);
     setPhoto(null);
     setEditing(plant);
@@ -124,6 +126,7 @@ export function AdminPage() {
       setForm(emptyPlant);
       setStep(0);
       setMessage("Planta salva com sucesso.");
+      setPlantEditorOpen(false);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível salvar.");
     } finally { setSaving(false); }
@@ -224,7 +227,7 @@ export function AdminPage() {
       </div>
 
       <div role="tabpanel" id="panel-plants" aria-labelledby="tab-plants" hidden={activeTab !== "plants"} tabIndex={0}>
-      <div className="grid items-start gap-8">
+      <div className={`grid items-start gap-8 ${plantEditorOpen ? "xl:grid-cols-[minmax(0,1fr)_minmax(440px,1fr)]" : ""}`}>
         <div className="min-w-0">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Plantas cadastradas</h2>
@@ -232,6 +235,7 @@ export function AdminPage() {
               variant="dark"
               disabled={saving}
               onClick={() => {
+                setPlantEditorOpen(true);
                 setEditing(null);
                 setPhoto(null);
                 setForm(emptyPlant);
@@ -290,14 +294,18 @@ export function AdminPage() {
           </div>
         </div>
 
-        <Card className="p-5">
-          <h2 className="mb-5 text-2xl font-semibold">{title}</h2>
+        {plantEditorOpen && <Card className="min-w-0 p-4 sm:p-5">
+          <div className="mb-6 flex items-start justify-between gap-3">
+            <h2 className="min-w-0 break-words text-2xl font-semibold">{title}</h2>
+            <Button type="button" variant="ghost" size="icon" disabled={saving} aria-label="Fechar cadastro" title="Fechar cadastro" onClick={() => setPlantEditorOpen(false)}><X className="h-4 w-4" /></Button>
+          </div>
           <ol aria-label="Etapas do cadastro" className="mb-6 grid grid-cols-4">
             {plantSteps.map((label, index) => (
-              <li key={label} className={`min-w-0 border-t-2 pt-3 ${index <= step ? "border-primary" : "border-border"}`}>
-                <button type="button" disabled={saving || index > step} onClick={() => setStep(index)} aria-current={index === step ? "step" : undefined} className="flex w-full flex-col items-center gap-2 px-1 text-xs disabled:cursor-default focus-visible:outline-primary sm:text-sm">
-                  <span className={`flex h-7 w-7 items-center justify-center rounded-full ${index <= step ? "bg-primary text-white" : "bg-moss/30 text-primary"}`}>
-                    {index < step ? <Check className="h-4 w-4" aria-label="Concluída" /> : index + 1}
+              <li key={label} className="relative min-w-0">
+                {index < plantSteps.length - 1 && <span aria-hidden="true" className={`absolute left-1/2 top-3.5 h-0.5 w-full ${index < step ? "bg-primary" : "bg-border"}`} />}
+                <button type="button" disabled={saving || index > step} onClick={() => setStep(index)} aria-current={index === step ? "step" : undefined} className={`relative flex min-h-16 w-full flex-col items-center gap-2 px-1 text-xs focus-visible:outline-primary ${index === step ? "font-semibold text-emerald-700" : index < step ? "text-primary" : "text-primary/60"}`}>
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-4 border-white ${index < step ? "bg-primary text-white" : index === step ? "bg-emerald-600 text-white ring-2 ring-emerald-600" : "bg-border text-primary"}`}>
+                    {index < step ? <Check className="h-3 w-3" aria-label="Concluída" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                   </span>
                   <span className="max-w-full break-words">{label}</span>
                 </button>
@@ -381,7 +389,7 @@ export function AdminPage() {
             </Button>
             </fieldset>
           </form>
-        </Card>
+        </Card>}
       </div>
       </div>
 
