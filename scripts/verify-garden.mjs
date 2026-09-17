@@ -47,6 +47,13 @@ export async function verifyGarden(page, base, password) {
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await page.getByPlaceholder("Nome popular", { exact: true }).fill("Nova planta");
+  for (const [button, tab] of [["Gerenciar categorias", "Categorias"], ["Gerenciar problemas", "Problemas"]]) {
+    await page.getByRole("button", { name: button, exact: true }).click();
+    assert.equal(await page.getByRole("tab", { name: tab, exact: true }).getAttribute("aria-selected"), "true");
+    assert.equal(await page.getByRole("tabpanel").count(), 1);
+    await page.getByRole("tab", { name: "Plantas", exact: true }).click();
+    assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).inputValue(), "Nova planta");
+  }
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     for (const name of ["Categorias", "Problemas", "Plantas"]) {
