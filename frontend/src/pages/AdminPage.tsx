@@ -34,6 +34,7 @@ const emptyPlant: PlantPayload = {
 const plantSteps = ["Identificação", "Ambiente", "Cuidados", "Categorias", "Problemas"];
 
 export function AdminPage() {
+  const [view, setView] = useState<"list" | "form">("list");
   const [step, setStep] = useState(0);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const plantsState = useAsync(() => api.listPlants(), []);
@@ -57,7 +58,7 @@ export function AdminPage() {
     requestAnimationFrame(() => document.getElementById("catalog-editor")?.scrollIntoView({ block: "center" }));
   }
 
-  const title = editing ? `Editando ${editing.name}` : "Nova planta";
+  const title = editing ? `Editando ${editing.name}` : "Adicionar planta";
   const tipText = useMemo(() => form.tips.join("\n"), [form.tips]);
   const loadError = plantsState.error || categoriesState.error || problemsState.error;
   if (loadError) return <section className="section-shell py-12"><LoadError message={loadError} /></section>;
@@ -65,6 +66,8 @@ export function AdminPage() {
 
   function editPlant(plant: Plant) {
     if (saving) return;
+    setView("form");
+    setCatalogOpen(false);
     setStep(0);
     setPhoto(null);
     setEditing(plant);
@@ -112,20 +115,23 @@ export function AdminPage() {
       setForm(emptyPlant);
       setStep(0);
       setMessage("Planta salva com sucesso.");
+      setView("list");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível salvar.");
     } finally { setSaving(false); }
   }
 
   async function removePlant(id: string) {
+    if (saving) return;
+    setSaving(true);
     try {
       await api.deletePlant(id);
       plantsState.setData(plants.filter((plant) => plant.id !== id));
-      setEditing(null); setForm(emptyPlant); setPhoto(null); setStep(0);
+      if (editing?.id === id) { setEditing(null); setForm(emptyPlant); setPhoto(null); setStep(0); }
       setMessage("Planta excluída.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível excluir.");
-    }
+    } finally { setSaving(false); }
   }
 
   async function saveCategory(event: FormEvent<HTMLFormElement>) {
@@ -190,22 +196,35 @@ export function AdminPage() {
         <div role="status" aria-live="polite">{message && <Badge>{message}</Badge>}</div>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-end gap-3">
-        <label className="grid min-w-0 flex-1 gap-2 text-sm font-medium">
-          Planta
-          <select aria-label="Planta cadastrada" disabled={saving} className="h-11 w-full rounded-md border border-border bg-white px-3" value={editing?.id ?? ""} onChange={(event) => {
-            const plant = plants.find((item) => item.id === event.target.value);
-            if (plant) editPlant(plant);
-            else { setEditing(null); setForm(emptyPlant); setPhoto(null); setStep(0); }
-            setCatalogOpen(false);
-          }}>
-            <option value="">Nova planta</option>
-            {plants.map((plant) => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
-          </select>
-        </label>
-        <Button disabled={saving} type="button" variant="ghost" onClick={() => { setEditing(null); setForm(emptyPlant); setPhoto(null); setStep(0); setCatalogOpen(false); }}><Plus className="h-4 w-4" />Nova</Button>
-        {editing && <Button disabled={saving} type="button" variant="ghost" aria-label="Excluir planta" onClick={() => { if (window.confirm("Excluir esta planta?")) void removePlant(editing.id); }}><Trash2 className="h-4 w-4" /></Button>}
+      <div role="tablist" aria-label="Plantas" className="mb-6 flex border-b border-border">
+        {([ ["list", "Plantas cadastradas"], ["form", "Adicionar planta"] ] as const).map(([id, label]) => (
+          <button key={id} type="button" role="tab" id={`plant-tab-${id}`} aria-controls={`plant-panel-${id}`} aria-selected={view === id} tabIndex={view === id ? 0 : -1} disabled={saving}
+            className={`min-h-12 flex-1 border-b-2 px-3 py-2 text-sm font-semibold focus-visible:outline-primary sm:flex-none sm:px-6 ${view === id ? "border-primary text-primary" : "border-transparent text-primary/60 hover:bg-moss/20"}`}
+            onClick={() => setView(id)}
+            onKeyDown={(event) => {
+              if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+              event.preventDefault();
+              const next = event.key === "Home" ? "list" : event.key === "End" ? "form" : view === "list" ? "form" : "list";
+              setView(next);
+              document.getElementById(`plant-tab-${next}`)?.focus();
+            }}>
+            {label}
+          </button>
+        ))}
       </div>
+      <div role="tabpanel" id="plant-panel-list" aria-labelledby="plant-tab-list" hidden={view !== "list"}>
+        {plants.length === 0 && <p className="py-8 text-sm text-primary/70">Nenhuma planta cadastrada.</p>}
+        <ul className="divide-y divide-border">
+          {plants.map((plant) => <li key={plant.id} className="flex items-center justify-between gap-3 py-4">
+            <div className="min-w-0"><p className="break-words font-semibold">{plant.name}</p><p className="break-words text-sm text-primary/60">{plant.scientificName}</p></div>
+            <div className="flex shrink-0 gap-2">
+              <Button disabled={saving} type="button" size="icon" variant="ghost" aria-label={`Editar ${plant.name}`} title="Editar planta" onClick={() => editPlant(plant)}><Pencil className="h-4 w-4" /></Button>
+              <Button disabled={saving} type="button" size="icon" variant="ghost" aria-label={`Excluir ${plant.name}`} title="Excluir planta" onClick={() => { if (window.confirm(`Excluir ${plant.name}?`)) void removePlant(plant.id); }}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+          </li>)}
+        </ul>
+      </div>
+      <div role="tabpanel" id="plant-panel-form" aria-labelledby="plant-tab-form" hidden={view !== "form"}>
       <Card className="min-w-0 p-4 sm:p-5">
           <h2 className="mb-6 break-words text-2xl font-semibold">{title}</h2>
           <ol aria-label="Etapas do cadastro" className="mb-6 grid grid-cols-5">
@@ -396,6 +415,7 @@ export function AdminPage() {
       </div>
         {catalogOpen && step >= 3 && <Button type="button" variant="ghost" onClick={() => setCatalogOpen(false)}>Fechar gerenciamento</Button>}
       </Card>
+      </div>
     </section>
   );
 }
