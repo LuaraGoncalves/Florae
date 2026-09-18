@@ -12,8 +12,8 @@ import { LoadError } from "../components/LoadError";
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { data: plants, error, loading } = useAsync(() => api.listPlants(), []);
-  const featured = plants?.slice(0, 3) ?? [];
+  const { data: plants, error, loading } = useAsync(() => api.listPlants({ difficulty: "EASY" }), []);
+  const featured = plants?.filter(plant => plant.difficulty === "EASY").slice(0, 3) ?? [];
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -97,13 +97,14 @@ export function HomePage() {
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-leaf">em destaque</p>
               <h2 className="mt-2 text-4xl font-semibold">Plantas para começar</h2>
             </div>
-            <Link to="/plantas" className="hidden text-sm font-semibold text-leaf hover:text-primary sm:inline-flex">
+            <Link to="/plantas?difficulty=EASY" className="hidden text-sm font-semibold text-leaf hover:text-primary sm:inline-flex">
               Ver catálogo
             </Link>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {error && <LoadError message={error} />}
             {loading && <p>Carregando plantas...</p>}
+            {!loading && !error && featured.length === 0 && <p>Nenhuma planta de cuidado fácil cadastrada.</p>}
             {featured.map((plant) => (
               <PlantCard key={plant.id} plant={plant} />
             ))}

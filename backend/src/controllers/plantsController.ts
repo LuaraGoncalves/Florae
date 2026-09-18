@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma } from "../prisma.js";
-import { plantSchema } from "../schemas.js";
+import { plantFiltersSchema, plantSchema } from "../schemas.js";
 import { slugify } from "../utils/slug.js";
 import { textParam } from "../utils/textParam.js";
 
@@ -10,12 +10,11 @@ const includeRelations = {
 };
 
 export async function listPlants(request: Request, response: Response) {
-  const search = textParam(request.query.search).trim();
-  const category = textParam(request.query.category).trim();
-  const difficulty = textParam(request.query.difficulty).trim();
-  const environment = textParam(request.query.environment).trim();
-  const light = textParam(request.query.light).trim();
-  const humidity = textParam(request.query.humidity).trim();
+  const filters = plantFiltersSchema.safeParse(request.query);
+  if (!filters.success) {
+    return response.status(400).json({ message: "Filtros inválidos.", issues: filters.error.flatten().fieldErrors });
+  }
+  const { search, category, difficulty, environment, light, humidity } = filters.data;
 
   const plants = await prisma.plant.findMany({
     where: {
@@ -30,7 +29,7 @@ export async function listPlants(request: Request, response: Response) {
             }
           : {},
         category ? { categories: { some: { category: { slug: category } } } } : {},
-        difficulty ? { difficulty: difficulty as never } : {},
+        difficulty ? { difficulty } : {},
         environment ? { environment: { contains: environment, mode: "insensitive" } } : {},
         light ? { light: { contains: light, mode: "insensitive" } } : {},
         humidity ? { humidity: { contains: humidity, mode: "insensitive" } } : {}

@@ -40,6 +40,12 @@ export async function verifyGarden(page, base, password) {
   await page.getByText(/Nenhuma planta favorita ainda/).waitFor();
 
   await page.route("**/api/imagens/status", route => route.fulfill({ json: { enabled: true } }));
+  for (const [path, id] of [["categorias", "new-category"], ["problemas", "new-problem"]]) {
+    await page.route(`**/api/${path}`, route => route.fulfill({
+      status: route.request().method() === "POST" ? 201 : 200,
+      json: route.request().method() === "POST" ? { ...route.request().postDataJSON(), id } : []
+    }));
+  }
   let uploaded = false;
   await page.route("**/api/imagens", route => { uploaded = true; assert.match(route.request().headers()["content-type"], /multipart\/form-data; boundary=/); return route.fulfill({ status: 201, json: { imageUrl: "https://example.test/upload.webp" } }); });
   await page.goto(`${base}/admin`);
@@ -56,12 +62,15 @@ export async function verifyGarden(page, base, password) {
   await page.getByRole("button", { name: "Editar Planta teste", exact: true }).click();
   assert.equal(await page.getByRole("tab", { name: "Adicionar planta", exact: true }).getAttribute("aria-selected"), "true");
   assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).inputValue(), "Planta teste");
-  await page.getByRole("button", { name: "Limpar", exact: true }).click();
+  await page.getByPlaceholder("Nome popular", { exact: true }).fill("Edicao nao salva");
   await page.getByRole("tab", { name: "Plantas cadastradas", exact: true }).click();
   page.once("dialog", dialog => dialog.dismiss());
   await page.getByRole("button", { name: "Excluir Planta teste", exact: true }).click();
   await page.getByRole("button", { name: "Editar Planta teste", exact: true }).waitFor();
   await page.getByRole("tab", { name: "Adicionar planta", exact: true }).click();
+  assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).inputValue(), "");
+  assert.equal(await page.getByPlaceholder("Nome científico", { exact: true }).inputValue(), "");
+  await page.getByRole("heading", { name: "Adicionar planta", exact: true }).waitFor();
   await page.getByPlaceholder("Nome popular", { exact: true }).fill("Nova planta");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   assert.equal(await page.locator("#plant-step-title").innerText(), "1. Identificação");
@@ -88,12 +97,46 @@ export async function verifyGarden(page, base, password) {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.screenshot({ path: `artifacts/step-${labels[0]}-${width}.png`, fullPage: true });
     }
+    if (labels[0] === "Rega") {
+      const tips = page.getByPlaceholder("Dicas, uma por linha", { exact: true });
+      await tips.fill("Primeira dica");
+      await tips.press("End");
+      await tips.press("Enter");
+      assert.equal(await tips.inputValue(), "Primeira dica\n");
+      await tips.pressSequentially("Segunda dica");
+      await tips.press("Enter");
+      await tips.press("Enter");
+      await tips.pressSequentially("  Terceira dica  ");
+      assert.equal(await tips.inputValue(), "Primeira dica\nSegunda dica\n\n  Terceira dica  ");
+    }
     await page.getByRole("button", { name: "Continuar", exact: true }).click();
   }
   for (const [button, tab] of [["Gerenciar categorias", "Categorias"], ["Gerenciar problemas", "Problemas"]]) {
     await page.getByRole("button", { name: button, exact: true }).click();
-    await page.getByPlaceholder(tab === "Categorias" ? "Nome da categoria" : "Nome do problema", { exact: true }).fill("Rascunho");
-    await page.getByRole("button", { name: "Fechar gerenciamento", exact: true }).click();
+    const name = tab === "Categorias" ? "Categoria nova" : "Problema novo";
+    await page.getByPlaceholder(tab === "Categorias" ? "Nome da categoria" : "Nome do problema", { exact: true }).fill(name);
+    assert.equal(await page.locator("form:visible").count(), 1);
+    assert.equal(await page.getByRole("button", { name: "Continuar", exact: true }).count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Salvar", exact: true }).count(), 0);
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.evaluate(() => window.scrollTo(0, 0));
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      await page.screenshot({ path: `artifacts/manage-${tab}-${width}.png`, fullPage: true });
+    }
+    await page.getByRole("button", { name: "Voltar à planta", exact: true }).click();
+    assert.equal(await page.locator("form:visible").count(), 1);
+    await page.getByRole("button", { name: button, exact: true }).click();
+    assert.equal(await page.getByPlaceholder(tab === "Categorias" ? "Nome da categoria" : "Nome do problema", { exact: true }).inputValue(), name);
+    await page.locator("#catalog-editor").getByPlaceholder("Descrição", { exact: true }).fill("Descricao de teste valida");
+    if (tab === "Problemas") {
+      await page.getByPlaceholder("Possíveis causas", { exact: true }).fill("Causas de teste");
+      await page.getByPlaceholder("Recomendação", { exact: true }).fill("Recomendacao de teste");
+    }
+    await page.getByRole("button", { name: tab === "Categorias" ? "Salvar categoria" : "Salvar problema", exact: true }).click();
+    await page.getByRole("checkbox", { name, exact: true }).waitFor();
+    assert.equal(await page.getByRole("checkbox", { name, exact: true }).isChecked(), true);
+    assert.equal(await page.locator("form:visible").count(), 1);
     assert.equal(await page.locator("#plant-step-title").innerText(), tab === "Categorias" ? "4. Categorias" : "5. Problemas");
     if (tab === "Categorias") {
       assert.equal(await page.getByRole("button", { name: "Salvar", exact: true }).count(), 0);
@@ -108,6 +151,9 @@ export async function verifyGarden(page, base, password) {
   assert.equal(saved.environment, "Interior");
   assert.equal(saved.light, "Meia-sombra");
   assert.equal(saved.humidity, "Alta");
+  assert.deepEqual(saved.categoryIds, ["new-category"]);
+  assert.deepEqual(saved.problemIds, ["new-problem"]);
+  assert.deepEqual(saved.tips, ["Primeira dica", "Segunda dica", "Terceira dica"]);
 
   await page.evaluate(() => localStorage.setItem("florae:garden:v1", "invalid-json"));
   await page.goto(`${base}/minhas-plantas`);

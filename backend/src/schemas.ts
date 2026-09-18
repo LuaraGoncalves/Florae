@@ -2,6 +2,15 @@ import { z } from "zod";
 
 export const difficultySchema = z.enum(["EASY", "MEDIUM", "HARD"]);
 
+export const plantFiltersSchema = z.object({
+  search: z.string().trim().default(""),
+  category: z.string().trim().default(""),
+  difficulty: z.string().trim().pipe(difficultySchema.or(z.literal(""))).optional(),
+  environment: z.string().trim().default(""),
+  light: z.string().trim().default(""),
+  humidity: z.string().trim().default("")
+});
+
 export const plantSchema = z.object({
   name: z.string().min(2),
   scientificName: z.string().min(2),

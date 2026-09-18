@@ -7,6 +7,7 @@ import { PlantsPage } from "../pages/PlantsPage";
 import { ProblemsPage } from "../pages/ProblemsPage";
 import { FavoritesPage } from "../pages/FavoritesPage";
 import { GardenPage } from "../pages/GardenPage";
+import { NotFoundPage } from "../pages/NotFoundPage";
 
 export const router = createBrowserRouter([
   {
@@ -19,7 +20,8 @@ export const router = createBrowserRouter([
       { path: "problemas", element: <ProblemsPage /> },
       { path: "admin", element: <AdminAccess /> },
       { path: "favoritos", element: <FavoritesPage /> },
-      { path: "minhas-plantas", element: <GardenPage /> }
+      { path: "minhas-plantas", element: <GardenPage /> },
+      { path: "*", element: <NotFoundPage /> }
     ]
   }
 ]);
