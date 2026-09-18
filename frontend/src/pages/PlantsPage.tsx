@@ -25,7 +25,7 @@ export function PlantsPage() {
   const difficulty = params.get("difficulty") ?? "";
   const { data: categories, error: categoryError } = useAsync(() => api.listCategories(), []);
   const { data: plants, loading, error } = useAsync(
-    () => api.listPlants({ search: params.get("search") ?? "", category, difficulty }),
+    () => api.listPlants({ search: params.get("search") ?? "", category, difficulty, environment: params.get("environment") ?? "", light: params.get("light") ?? "", humidity: params.get("humidity") ?? "" }),
     [params.toString()]
   );
 
@@ -34,6 +34,9 @@ export function PlantsPage() {
     if (params.get("search")) parts.push(`Busca: ${params.get("search")}`);
     if (category) parts.push(categories?.find((item) => item.slug === category)?.name ?? category);
     if (difficulty) parts.push(difficultyLabels[difficulty as Difficulty]);
+    if (params.get("environment")) parts.push(`Ambiente: ${params.get("environment")}`);
+    if (params.get("light")) parts.push(`Iluminação: ${params.get("light")}`);
+    if (params.get("humidity")) parts.push(`Umidade: ${params.get("humidity")}`);
     return parts.join(" • ");
   }, [category, categories, difficulty, params]);
 

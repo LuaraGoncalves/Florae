@@ -78,7 +78,7 @@ export function HomePage() {
           </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {categoryCards.map(([title, text, Icon, slug]) => (
-              <Link key={title} to={`/plantas?category=${slug}`}>
+              <Link key={title} to={`/plantas?${slug}`}>
                 <div className="grid aspect-square place-items-center rounded-full bg-moss/20 p-7 text-center transition hover:bg-moss/35">
                   <Icon className="mb-4 h-10 w-10 text-moss" />
                   <h3 className="text-lg font-semibold">{title}</h3>
@@ -130,8 +130,8 @@ export function HomePage() {
   );
 }
   const categoryCards: Array<[string, string, LucideIcon, string]> = [
-    ["Interior", "Plantas para sala e escritório", Leaf, "interior"],
-    ["Fáceis", "Comece sem medo", CheckCircle2, "faceis"],
-    ["Meia-sombra", "Luz suave e filtrada", SunMedium, "meia-sombra"],
-    ["Umidade", "Banheiros claros e cantos úmidos", Droplets, "umidade"]
+    ["Interior", "Plantas para sala e escritório", Leaf, "environment=interior"],
+    ["Fáceis", "Comece sem medo", CheckCircle2, "difficulty=EASY"],
+    ["Meia-sombra", "Luz suave e filtrada", SunMedium, "light=meia-sombra"],
+    ["Umidade", "Banheiros claros e cantos úmidos", Droplets, "humidity=alta"]
   ];

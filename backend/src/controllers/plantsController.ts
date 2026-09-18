@@ -13,6 +13,9 @@ export async function listPlants(request: Request, response: Response) {
   const search = textParam(request.query.search).trim();
   const category = textParam(request.query.category).trim();
   const difficulty = textParam(request.query.difficulty).trim();
+  const environment = textParam(request.query.environment).trim();
+  const light = textParam(request.query.light).trim();
+  const humidity = textParam(request.query.humidity).trim();
 
   const plants = await prisma.plant.findMany({
     where: {
@@ -27,7 +30,10 @@ export async function listPlants(request: Request, response: Response) {
             }
           : {},
         category ? { categories: { some: { category: { slug: category } } } } : {},
-        difficulty ? { difficulty: difficulty as never } : {}
+        difficulty ? { difficulty: difficulty as never } : {},
+        environment ? { environment: { contains: environment, mode: "insensitive" } } : {},
+        light ? { light: { contains: light, mode: "insensitive" } } : {},
+        humidity ? { humidity: { contains: humidity, mode: "insensitive" } } : {}
       ]
     },
     include: includeRelations,
