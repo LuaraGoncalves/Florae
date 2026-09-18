@@ -39,11 +39,14 @@ export const api = {
     const result = await request<{ token: string }>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
     token = result.token;
   },
-  async listPlants(params?: { search?: string; category?: string; difficulty?: string }) {
+  async listPlants(params?: { search?: string; category?: string; difficulty?: string; environment?: string; light?: string; humidity?: string }) {
     const query = new URLSearchParams();
     if (params?.search) query.set("search", params.search);
     if (params?.category) query.set("category", params.category);
     if (params?.difficulty) query.set("difficulty", params.difficulty);
+    for (const key of ["environment", "light", "humidity"] as const) {
+      if (params?.[key]) query.set(key, params[key]);
+    }
 
     return request<Plant[]>(`/plantas${query.size ? `?${query}` : ""}`);
   },

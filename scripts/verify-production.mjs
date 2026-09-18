@@ -64,6 +64,16 @@ try {
   await page.route("**/api/plantas*", route => route.fulfill({ json: [] }));
   await page.getByRole("button", { name: "Tentar novamente" }).click();
   await page.getByText("Nenhuma planta encontrada", { exact: true }).waitFor();
+  for (const [label, key, value] of [["Fáceis", "difficulty", "EASY"], ["Interior", "environment", "interior"], ["Meia-sombra", "light", "meia-sombra"], ["Umidade", "humidity", "alta"]]) {
+    await page.goto(base);
+    const response = page.waitForRequest(request => {
+      const url = new URL(request.url());
+      return url.pathname === "/api/plantas" && url.searchParams.get(key) === value;
+    });
+    await page.getByRole("link").filter({ has: page.getByRole("heading", { name: label, exact: true }) }).click();
+    await response;
+    assert.equal(new URL(page.url()).searchParams.get(key), value);
+  }
   await verifyGarden(page, base, password);
   assert.deepEqual(errors, []);
   console.log("OK: producao, rotas diretas, API protegida, login/logout, erro e recuperacao, desktop/mobile.");
