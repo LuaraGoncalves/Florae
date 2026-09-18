@@ -78,7 +78,11 @@ export async function verifyGarden(page, base, password) {
   assert.equal(await page.getByPlaceholder("Nome popular", { exact: true }).inputValue(), "Nova planta");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   for (const labels of [["Iluminação", "Temperatura", "Umidade", "Ambiente"], ["Rega", "Substrato", "Adubação", "Poda"]]) {
-    for (const label of labels) await page.getByLabel(label, { exact: true }).fill("Conteudo de teste valido");
+    for (const label of labels) {
+      const values = { "Iluminação": "Meia-sombra", "Umidade": "Alta", "Ambiente": "Interior" };
+      if (values[label]) await page.getByLabel(label, { exact: true }).selectOption(values[label]);
+      else await page.getByLabel(label, { exact: true }).fill("Conteudo de teste valido");
+    }
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -101,6 +105,9 @@ export async function verifyGarden(page, base, password) {
   assert.equal(await page.getByRole("tab", { name: "Plantas cadastradas", exact: true }).getAttribute("aria-selected"), "true");
   await page.getByRole("button", { name: "Editar Nova planta", exact: true }).waitFor();
   assert(uploaded); assert.equal(saved.imageUrl, "https://example.test/upload.webp");
+  assert.equal(saved.environment, "Interior");
+  assert.equal(saved.light, "Meia-sombra");
+  assert.equal(saved.humidity, "Alta");
 
   await page.evaluate(() => localStorage.setItem("florae:garden:v1", "invalid-json"));
   await page.goto(`${base}/minhas-plantas`);

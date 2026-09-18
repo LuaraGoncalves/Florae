@@ -9,6 +9,7 @@ import { useAsync } from "../hooks/useAsync";
 import { api } from "../services/api";
 import { LoadError } from "../components/LoadError";
 import { ImagePicker } from "../components/ImagePicker";
+import { plantConditions } from "../lib/plantOptions";
 import type { Category, Difficulty, Plant, PlantPayload, Problem } from "../types";
 
 const emptyPlant: PlantPayload = {
@@ -261,16 +262,23 @@ export function AdminPage() {
               <option value="HARD">Difícil</option>
             </select>
             </>}
+            {step === 1 && plantConditions.map(({ key, label, options }) => (
+              <label key={key} className="grid gap-2 text-sm font-medium">
+                {label}
+                <select aria-label={label} required className="h-11 min-w-0 w-full rounded-md border border-border bg-white px-3 text-sm" value={form[key]} onChange={event => setForm({ ...form, [key]: event.target.value })}>
+                  <option value="">Selecione</option>
+                  {form[key] && !options.some(option => option === form[key]) && <option value={form[key]}>{form[key]} (valor anterior)</option>}
+                  {options.map(option => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </label>
+            ))}
             {[
               ["description", "Descrição"],
-              ["light", "Iluminação"],
               ["watering", "Rega"],
               ["temperature", "Temperatura"],
-              ["humidity", "Umidade"],
               ["substrate", "Substrato"],
               ["fertilizing", "Adubação"],
-              ["pruning", "Poda"],
-              ["environment", "Ambiente"]
+              ["pruning", "Poda"]
             ].filter(([key]) => (step === 0 && key === "description") || (step === 1 && ["light", "temperature", "humidity", "environment"].includes(key)) || (step === 2 && ["watering", "substrate", "fertilizing", "pruning"].includes(key))).map(([key, label]) => (
               <label key={key} className="grid gap-2 text-sm font-medium">
               {label}
