@@ -15,8 +15,8 @@ export function Layout() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-primary/95 text-cream backdrop-blur">
+    <div className="flex min-h-screen flex-col bg-background supports-[min-height:100dvh]:min-h-dvh">
+      <header className="sticky top-0 z-50 shrink-0 border-b border-white/10 bg-primary/95 text-cream backdrop-blur">
         <div className="section-shell flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center gap-2 text-xl font-semibold">
             <Sprout className="h-6 w-6 text-moss" />
@@ -43,10 +43,10 @@ export function Layout() {
           </nav>
         )}
       </header>
-      <main>
+      <main className="flex-1">
         <Outlet />
       </main>
-      <footer className="bg-primary py-10 text-cream">
+      <footer className="shrink-0 bg-primary py-10 text-cream">
         <div className="section-shell flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2 text-lg font-semibold">

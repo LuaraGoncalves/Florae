@@ -53,10 +53,22 @@ export function AdminPage() {
   const plants = plantsState.data ?? [];
   const categories = categoriesState.data ?? [];
   const problems = problemsState.data ?? [];
+  const managingCatalog = catalogOpen && step >= 3;
+
+  function changeStep(next: number) {
+    setCatalogOpen(false);
+    setStep(next);
+    requestAnimationFrame(() => document.getElementById("plant-step-title")?.focus());
+  }
 
   function openCatalog() {
     setCatalogOpen(true);
-    requestAnimationFrame(() => document.getElementById("catalog-editor")?.scrollIntoView({ block: "center" }));
+    requestAnimationFrame(() => document.querySelector<HTMLInputElement>("#catalog-editor input")?.focus());
+  }
+
+  function closeCatalog() {
+    setCatalogOpen(false);
+    requestAnimationFrame(() => document.getElementById(`manage-${plantSteps[step]}`)?.focus());
   }
 
   const title = editing ? `Editando ${editing.name}` : "Adicionar planta";
@@ -64,6 +76,20 @@ export function AdminPage() {
   const loadError = plantsState.error || categoriesState.error || problemsState.error;
   if (loadError) return <section className="section-shell py-12"><LoadError message={loadError} /></section>;
   if (plantsState.loading || categoriesState.loading || problemsState.loading) return <section className="section-shell py-12">Carregando...</section>;
+
+  function resetPlant() {
+    setEditing(null);
+    setForm(emptyPlant);
+    setPhoto(null);
+    setStep(0);
+    setCatalogOpen(false);
+  }
+
+  function selectView(next: "list" | "form") {
+    if (saving || next === view) return;
+    if (next === "form") resetPlant();
+    setView(next);
+  }
 
   function editPlant(plant: Plant) {
     if (saving) return;
@@ -88,8 +114,8 @@ export function AdminPage() {
       pruning: plant.pruning,
       environment: plant.environment,
       tips: plant.tips,
-      categoryIds: plant.categories.map(({ category }) => category.id),
-      problemIds: plant.problems.map(({ problem }) => problem.id)
+      categoryIds: plant.categories.map(({ category }) => category.id).filter(id => categories.some(category => category.id === id)),
+      problemIds: plant.problems.map(({ problem }) => problem.id).filter(id => problems.some(problem => problem.id === id))
     });
   }
 
@@ -97,24 +123,21 @@ export function AdminPage() {
     event.preventDefault();
     if (saving) return;
     if (step < plantSteps.length - 1) {
-      setStep(step + 1);
-      requestAnimationFrame(() => document.getElementById("plant-step-title")?.focus());
+      changeStep(step + 1);
       return;
     }
     setSaving(true);
     try {
-      let payload = form;
+      let payload = { ...form, tips: form.tips.map(tip => tip.trim()).filter(Boolean) };
       if (photo) {
         const { imageUrl } = await api.uploadImage(photo);
-        payload = { ...form, imageUrl };
+        payload = { ...payload, imageUrl };
         setForm(payload);
         setPhoto(null);
       }
       const saved = editing ? await api.updatePlant(editing.id, payload) : await api.createPlant(payload);
       plantsState.setData(editing ? plants.map((plant) => (plant.id === saved.id ? saved : plant)) : [...plants, saved]);
-      setEditing(null);
-      setForm(emptyPlant);
-      setStep(0);
+      resetPlant();
       setMessage("Planta salva com sucesso.");
       setView("list");
     } catch (error) {
@@ -128,7 +151,7 @@ export function AdminPage() {
     try {
       await api.deletePlant(id);
       plantsState.setData(plants.filter((plant) => plant.id !== id));
-      if (editing?.id === id) { setEditing(null); setForm(emptyPlant); setPhoto(null); setStep(0); }
+      if (editing?.id === id) resetPlant();
       setMessage("Planta excluída.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível excluir.");
@@ -154,7 +177,12 @@ export function AdminPage() {
     try {
       await api.deleteCategory(id);
       categoriesState.setData(categories.filter((item) => item.id !== id));
+      plantsState.setData(current => current?.map(plant => ({ ...plant, categories: plant.categories.filter(({ category }) => category.id !== id) })) ?? null);
       setForm(current => ({ ...current, categoryIds: current.categoryIds.filter(value => value !== id) }));
+      if (editingCategory?.id === id) {
+        setEditingCategory(null);
+        setCategoryForm({ name: "", slug: "", description: "" });
+      }
       setMessage("Categoria excluída.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível excluir a categoria.");
@@ -180,7 +208,12 @@ export function AdminPage() {
     try {
       await api.deleteProblem(id);
       problemsState.setData(problems.filter((item) => item.id !== id));
+      plantsState.setData(current => current?.map(plant => ({ ...plant, problems: plant.problems.filter(({ problem }) => problem.id !== id) })) ?? null);
       setForm(current => ({ ...current, problemIds: current.problemIds.filter(value => value !== id) }));
+      if (editingProblem?.id === id) {
+        setEditingProblem(null);
+        setProblemForm({ name: "", slug: "", description: "", causes: "", recommendation: "" });
+      }
       setMessage("Problema excluído.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível excluir o problema.");
@@ -201,12 +234,12 @@ export function AdminPage() {
         {([ ["list", "Plantas cadastradas"], ["form", "Adicionar planta"] ] as const).map(([id, label]) => (
           <button key={id} type="button" role="tab" id={`plant-tab-${id}`} aria-controls={`plant-panel-${id}`} aria-selected={view === id} tabIndex={view === id ? 0 : -1} disabled={saving}
             className={`min-h-12 flex-1 border-b-2 px-3 py-2 text-sm font-semibold focus-visible:outline-primary sm:flex-none sm:px-6 ${view === id ? "border-primary text-primary" : "border-transparent text-primary/60 hover:bg-moss/20"}`}
-            onClick={() => setView(id)}
+            onClick={() => selectView(id)}
             onKeyDown={(event) => {
               if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
               event.preventDefault();
               const next = event.key === "Home" ? "list" : event.key === "End" ? "form" : view === "list" ? "form" : "list";
-              setView(next);
+              selectView(next);
               document.getElementById(`plant-tab-${next}`)?.focus();
             }}>
             {label}
@@ -232,7 +265,7 @@ export function AdminPage() {
             {plantSteps.map((label, index) => (
               <li key={label} className="relative min-w-0">
                 {index < plantSteps.length - 1 && <span aria-hidden="true" className={`absolute left-1/2 top-3.5 h-0.5 w-full ${index < step ? "bg-primary" : "bg-border"}`} />}
-                <button type="button" disabled={saving || index > step} onClick={() => setStep(index)} aria-current={index === step ? "step" : undefined} className={`relative flex min-h-16 w-full flex-col items-center gap-2 px-1 text-xs focus-visible:outline-primary ${index === step ? "font-semibold text-emerald-700" : index < step ? "text-primary" : "text-primary/60"}`}>
+                <button type="button" disabled={saving || index > step} onClick={() => changeStep(index)} aria-current={index === step ? "step" : undefined} className={`relative flex min-h-16 w-full flex-col items-center gap-2 px-1 text-xs focus-visible:outline-primary ${index === step ? "font-semibold text-emerald-700" : index < step ? "text-primary" : "text-primary/60"}`}>
                   <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-4 border-white ${index < step ? "bg-primary text-white" : index === step ? "bg-emerald-600 text-white ring-2 ring-emerald-600" : "bg-border text-primary"}`}>
                     {index < step ? <Check className="h-3 w-3" aria-label="Concluída" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                   </span>
@@ -242,6 +275,8 @@ export function AdminPage() {
             ))}
           </ol>
           <h3 id="plant-step-title" tabIndex={-1} className="mb-4 text-lg font-semibold outline-none">{step + 1}. {plantSteps[step]}</h3>
+          {managingCatalog && <Button type="button" variant="ghost" className="mb-4" onClick={closeCatalog}><ArrowLeft className="h-4 w-4" />Voltar à planta</Button>}
+          <div hidden={managingCatalog}>
           <form className="grid gap-3" onSubmit={savePlant}>
             <fieldset disabled={saving} className="grid min-w-0 gap-3">
             {step === 0 && <>
@@ -297,7 +332,7 @@ export function AdminPage() {
               className="min-h-24 rounded-md border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-moss/40"
               placeholder="Dicas, uma por linha"
               value={tipText}
-              onChange={(event) => setForm({ ...form, tips: event.target.value.split("\n").filter(Boolean) })}
+              onChange={(event) => setForm({ ...form, tips: event.target.value.split("\n") })}
             />
             </>}
             {step === 3 && <>
@@ -315,23 +350,23 @@ export function AdminPage() {
             <CheckList title="Problemas" description="Condições que podem afetar a planta, como folhas amareladas ou cochonilhas." emptyMessage="Nenhum problema cadastrado." onManage={openCatalog} items={problems} selected={form.problemIds} onChange={(problemIds) => setForm({ ...form, problemIds })} />
             </>}
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-            <Button type="button" variant="ghost" disabled={step === 0} onClick={() => setStep(step - 1)}><ArrowLeft className="h-4 w-4" />Voltar</Button>
+            <Button type="button" variant="ghost" disabled={step === 0} onClick={() => changeStep(step - 1)}><ArrowLeft className="h-4 w-4" />Voltar</Button>
             <Button type="submit" variant="dark">
               {step === plantSteps.length - 1 ? <Save className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
               {saving ? "Salvando..." : step === plantSteps.length - 1 ? "Salvar" : "Continuar"}
             </Button>
             </div>
-            <Button type="button" variant="ghost" onClick={() => { setForm(emptyPlant); setPhoto(null); setEditing(null); setStep(0); }}>
+            <Button type="button" variant="ghost" onClick={resetPlant}>
               <RefreshCcw className="h-4 w-4" />
               Limpar
             </Button>
             </fieldset>
           </form>
+          </div>
 
-      <div id={step === 3 ? "catalog-editor" : undefined} hidden={step !== 3 || !catalogOpen} className="mt-6 border-t border-border pt-6">
+      <div id={step === 3 ? "catalog-editor" : undefined} hidden={step !== 3 || !catalogOpen}>
         <div className="max-w-3xl">
-          <h2 className="text-2xl font-semibold">Categorias</h2>
-          <p className="mb-5 mt-2 text-sm text-primary/70">Grupos de plantas com características em comum, como suculentas ou plantas de interior.</p>
+          <h4 className="mb-4 text-lg font-semibold">{editingCategory ? "Editar categoria" : "Nova categoria"}</h4>
           <form className="mb-5 grid gap-3" onSubmit={saveCategory}>
             <Input required placeholder="Nome da categoria" value={categoryForm.name} onChange={(event) => setCategoryForm({ ...categoryForm, name: event.target.value })} />
             <Input placeholder="Slug" value={categoryForm.slug} onChange={(event) => setCategoryForm({ ...categoryForm, slug: event.target.value })} />
@@ -371,10 +406,9 @@ export function AdminPage() {
         </div>
       </div>
 
-      <div id={step === 4 ? "catalog-editor" : undefined} hidden={step !== 4 || !catalogOpen} className="mt-6 border-t border-border pt-6">
+      <div id={step === 4 ? "catalog-editor" : undefined} hidden={step !== 4 || !catalogOpen}>
         <div className="max-w-3xl">
-          <h2 className="text-2xl font-semibold">Problemas comuns</h2>
-          <p className="mb-5 mt-2 text-sm text-primary/70">Pragas, doenças e sintomas das plantas, com suas possíveis causas e recomendações de cuidado.</p>
+          <h4 className="mb-4 text-lg font-semibold">{editingProblem ? "Editar problema" : "Novo problema"}</h4>
           <form className="mb-5 grid gap-3" onSubmit={saveProblem}>
             <Input required placeholder="Nome do problema" value={problemForm.name} onChange={(event) => setProblemForm({ ...problemForm, name: event.target.value })} />
             <Input placeholder="Slug" value={problemForm.slug} onChange={(event) => setProblemForm({ ...problemForm, slug: event.target.value })} />
@@ -421,7 +455,6 @@ export function AdminPage() {
           </div>
         </div>
       </div>
-        {catalogOpen && step >= 3 && <Button type="button" variant="ghost" onClick={() => setCatalogOpen(false)}>Fechar gerenciamento</Button>}
       </Card>
       </div>
     </section>
@@ -446,8 +479,8 @@ function CheckList<T extends Category | Problem>({
   onChange: (ids: string[]) => void;
 }) {
   return (
-    <fieldset className="min-w-0 border-t border-border py-3">
-      <legend className="pr-2 text-sm font-semibold">{title}</legend>
+    <fieldset className="min-w-0">
+      <legend className="sr-only">{title}</legend>
       <p className="mb-3 text-sm text-primary/70">{description}</p>
       <div className="grid gap-2">
         {items.length === 0 && <p className="text-sm text-primary/60">{emptyMessage}</p>}
@@ -464,7 +497,7 @@ function CheckList<T extends Category | Problem>({
           </label>
         ))}
       </div>
-      <Button type="button" variant="ghost" className="mt-2" onClick={onManage}>
+      <Button id={`manage-${title}`} type="button" variant="ghost" className="mt-2" onClick={onManage}>
         <Plus className="h-4 w-4" />
         {title === "Categorias" ? "Gerenciar categorias" : "Gerenciar problemas"}
       </Button>

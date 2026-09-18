@@ -20,8 +20,14 @@
     "frontend",
     "backend"
   ],
+  "overrides": {
+    "@prisma/config@6.19.3": {
+      "deepmerge-ts": "8.0.0"
+    }
+  },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "prisma": "6.19.3"
   }
 }
