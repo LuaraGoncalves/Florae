@@ -9,6 +9,7 @@ import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { useAsync } from "../hooks/useAsync";
 import { difficultyLabels } from "../lib/utils";
+import { plantConditions } from "../lib/plantOptions";
 import { api } from "../services/api";
 import type { Difficulty } from "../types";
 
@@ -110,6 +111,16 @@ export function PlantsPage() {
                   ))}
                 </div>
               </div>
+              {plantConditions.map(({ key, label, options }) => (
+                <label key={key} className="grid gap-2 text-sm font-semibold">
+                  {label}
+                  <select aria-label={label} className="h-11 min-w-0 w-full rounded-md border border-border bg-white px-3 text-sm font-normal" value={params.get(key) ?? ""} onChange={event => updateFilter(key, event.target.value)}>
+                    <option value="">Todos</option>
+                    {params.get(key) && !options.some(option => option === params.get(key)) && <option value={params.get(key)!}>{params.get(key)}</option>}
+                    {options.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>
+              ))}
             </div>
           </Card>
         </aside>
