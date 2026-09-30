@@ -51,10 +51,11 @@ npm run dev
 
 O frontend fica disponível, por padrão, em [localhost:5173](http://localhost:5173), e a API em `localhost:3333/api`. O Compose executa somente o PostgreSQL.
 
+O catálogo não é preenchido automaticamente. Configure o administrador com `npm run admin:setup` e cadastre o conteúdo pelo painel `/admin`.
+
 | Comando | Finalidade |
 | --- | --- |
 | `npm run admin:setup` | Configurar o administrador local; requer reiniciar o backend |
-| `npm run seed` | Carregar conteúdo inicial; pode sobrescrever os registros correspondentes |
 | `npm run build` | Compilar frontend e backend |
 | `npm run lint` | Analisar o código do frontend |
 | `npm test` | Executar testes do backend |
